@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Clicktide Creators · Dashboard</title>
+<title>Clicktide Creators — Real postcards for your top Twitch supporters</title>
+<meta name="description" content="Connect your Twitch channel and Clicktide mails real postcards to the fans who show up — gift subs, sub anniversaries, bits. You set the rules; we print and ship. Fans' addresses stay private.">
+<meta property="og:title" content="Clicktide Creators — Real postcards for your top Twitch supporters">
+<meta property="og:description" content="Fans hit milestones. Real mail shows up at their door, from you. Addresses stay private.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='14' width='56' height='36' rx='6' fill='%230F1B24'/%3E%3Crect x='10' y='20' width='24' height='4' rx='2' fill='%232BB3AA'/%3E%3Crect x='10' y='28' width='18' height='3' rx='1.5' fill='%23F7F5F0'/%3E%3Crect x='10' y='34' width='14' height='3' rx='1.5' fill='%23F7F5F0' opacity='.6'/%3E%3Ccircle cx='50' cy='24' r='6' fill='%232BB3AA'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
@@ -14,6 +19,7 @@
     <div class="brand">Clicktide <span class="badge">CREATORS</span></div>
     <div class="row">
       <span id="who" class="hidden"></span>
+      <button id="login-top" class="secondary small hidden" type="button">Log in with Twitch</button>
       <button id="logout" class="secondary small hidden" type="button">Log out</button>
     </div>
   </div>
@@ -22,12 +28,118 @@
 <main class="wrap">
   <div id="notice" class="msg hidden" role="status"></div>
 
-  <!-- Logged out -->
-  <section id="login-view" class="hero hidden">
-    <h1>Reward the fans who show up.</h1>
-    <p>Connect your Twitch channel. Fans earn real postcards and earned-only merch from gift subs, sub anniversaries and watch time. We print and ship.</p>
-    <button id="login" type="button">Connect Twitch</button>
-  </section>
+  <!-- Logged out: landing page -->
+  <div id="login-view" class="landing hidden">
+
+    <section class="landing-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">For Twitch streamers</p>
+        <h1>Real mail for the fans who show up.</h1>
+        <p class="lead">When a supporter gifts subs, hits a sub anniversary or cheers bits, Clicktide mails them a real postcard — designed in your brand, signed from you. You set the rules. We print and ship.</p>
+        <div class="row">
+          <button id="login" type="button">Connect your Twitch</button>
+        </div>
+        <p class="fineprint">One click to connect · No credit card to start · Fans' addresses stay private</p>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="mock-card mock-behind">
+          <span class="mock-badge-gold">LEGENDARY</span>
+        </div>
+        <div class="mock-card mock-front">
+          <span class="mock-pill">#12 · NOVEMBER</span>
+          <div class="mock-bottom">
+            <div class="mock-gift">A GIFT FOR JORDAN</div>
+            <div class="mock-title">thank you for showing up.</div>
+            <div class="mock-from">from yourchannel</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-section">
+      <h2 class="section-title">How it works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Connect your channel</h3>
+          <p>Log in with Twitch and you're live. Clicktide listens for gift subs, resubs, bits and channel point redemptions — automatically, on every stream.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Fans hit milestones</h3>
+          <p>10 gift subs in a month. A 12-month anniversary. You choose the rules, the rewards and a monthly budget — Clicktide never overspends it.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Real mail shows up</h3>
+          <p>The fan gets a private claim link, enters their address once, and a printed card lands in their mailbox — from you, with their stats on it.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-section">
+      <h2 class="section-title">Bigger loyalty, bigger mail</h2>
+      <p class="section-sub">Every reward has a rarity. Rarer milestones earn physically bigger, fancier mail.</p>
+      <div class="tiers">
+        <div class="tier tier-common">
+          <p class="tier-name">Common</p>
+          <p class="tier-size">4×6 postcard</p>
+          <p class="tier-line">“Thank you for showing up.”</p>
+        </div>
+        <div class="tier tier-rare">
+          <p class="tier-name">Rare</p>
+          <p class="tier-size">6×9 postcard</p>
+          <p class="tier-line">“You're a real one.”</p>
+        </div>
+        <div class="tier tier-epic">
+          <p class="tier-name">Epic</p>
+          <p class="tier-size">6×11 postcard</p>
+          <p class="tier-line">“You're a legend.”</p>
+        </div>
+        <div class="tier tier-legendary">
+          <p class="tier-name">Legendary</p>
+          <p class="tier-size">6×18 keepsake mailer</p>
+          <p class="tier-line">“You're one of one.”</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-section privacy-band">
+      <div class="privacy-grid">
+        <div class="privacy-item">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <h3>Addresses stay private</h3>
+          <p>Fans share their address with Clicktide only — never with the streamer, never in chat. It's locked away with row-level database security.</p>
+        </div>
+        <div class="privacy-item">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <h3>Verified, not guessed</h3>
+          <p>Every milestone comes straight from Twitch's own signed events, and fans prove who they are with their Twitch login before anything ships.</p>
+        </div>
+        <div class="privacy-item">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <h3>Budget you control</h3>
+          <p>Set a monthly cap per reward and a hard monthly budget for the whole channel. Generosity, with guardrails.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-section landing-cta">
+      <h2 class="section-title">Your community remembers real mail.</h2>
+      <p class="section-sub">Email gets swiped away. A postcard on the fridge doesn't.</p>
+      <button id="login-cta" type="button">Connect your Twitch</button>
+    </section>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="brand">Clicktide <span class="badge">CREATORS</span></div>
+        <p class="fineprint">Real mail for real supporters · Part of the <a href="https://goclicktide.com">Clicktide</a> family</p>
+        <p class="fineprint">Not affiliated with or endorsed by Twitch. Supporter addresses are never shared with streamers.</p>
+        <p class="fineprint">© 2026 Clicktide · <a href="https://goclicktide.com/privacy.html">Privacy</a> · <a href="https://goclicktide.com/terms.html">Terms</a></p>
+      </div>
+    </footer>
+
+  </div>
 
   <!-- Logged in -->
   <section id="app-view" class="hidden" style="display:flex;flex-direction:column;gap:24px">
@@ -242,6 +354,7 @@
 
   async function showApp(session) {
     $("login-view").classList.add("hidden");
+    $("login-top").classList.add("hidden");
     $("app-view").classList.remove("hidden");
     $("logout").classList.remove("hidden");
     const ok = await connect();
@@ -252,16 +365,20 @@
   function showLogin() {
     $("app-view").classList.add("hidden");
     $("logout").classList.add("hidden");
+    $("login-top").classList.remove("hidden");
     $("login-view").classList.remove("hidden");
   }
 
-  $("login").addEventListener("click", async () => {
+  async function doLogin() {
     const { error } = await sb.auth.signInWithOAuth({
       provider: "twitch",
       options: { scopes: cfg.STREAMER_SCOPES, redirectTo: location.origin + location.pathname },
     });
     if (error) notify("Twitch login isn't set up yet: " + error.message, true);
-  });
+  }
+  $("login").addEventListener("click", doLogin);
+  $("login-top").addEventListener("click", doLogin);
+  $("login-cta").addEventListener("click", doLogin);
   $("logout").addEventListener("click", async () => { await sb.auth.signOut(); showLogin(); });
   $("budget-form").addEventListener("submit", async (e) => {
     e.preventDefault();
