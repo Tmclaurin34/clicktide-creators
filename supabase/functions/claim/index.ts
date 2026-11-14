@@ -70,7 +70,7 @@ type CardInfo = {
   supporter: string;
   reward: string;
   statLine: string;   // e.g. "You gifted 25 subs in November."
-  number: string;     // e.g. "#12 ¬∑ November 2026"
+  number: string;     // e.g. "#12 · November 2026"
   cardIndex: number;  // this card's number in the month; picks which photo is used
   tier?: string | null; // common | rare | epic | legendary: rarer gifts get a special border and a bigger format
   styleKey: string;   // fallback seed (streamer id) when no style was saved
@@ -297,7 +297,7 @@ ${c.statLine ? `<div style="font-family:Inter,Arial,sans-serif;font-size:7.5pt;f
 <div style="position:absolute;left:0.38in;top:${polaroid ? "1.58in" : "1.15in"};width:2.2in;font-family:${F.handCss};font-weight:600;font-size:${pt(13.5, F.handSize)};line-height:1.2;color:#1B2B35;">${message}</div>
 <div style="position:absolute;left:0.38in;bottom:0.3in;width:2.2in;">
 ${sig ? `<img src="${sig}" style="max-height:0.55in;max-width:1.9in;display:block;mix-blend-mode:multiply">` : `<div style="font-family:${F.handCss};font-weight:700;font-size:${pt(20, F.handSize)};color:#1B2B35;">${s}</div>`}
-<div style="font-family:Inter,Arial,sans-serif;font-size:7pt;color:#5A6A72;margin-top:0.03in;">&mdash; ${s} &nbsp;¬∑&nbsp; ${num}</div></div>`;
+<div style="font-family:Inter,Arial,sans-serif;font-size:7pt;color:#5A6A72;margin-top:0.03in;">&mdash; ${s} &nbsp;·&nbsp; ${num}</div></div>`;
 }
 
 // A postcard at the size its rarity calls for (4x6, 6x9 or 6x11).
@@ -335,7 +335,7 @@ function mailerHtml(c: CardInfo) {
 <div style="position:absolute;left:0.5in;top:0.55in;width:${P - 1}in;">
 ${logoTag("0.7in", "#1B2B35")}
 <div style="font-family:${F.handCss};font-weight:700;font-size:${pt(26, F.handSize)};color:#1B2B35;margin-top:0.25in;">${f}, something special is inside.</div>
-<div style="font-family:Inter,Arial,sans-serif;font-weight:700;font-size:9pt;letter-spacing:2px;color:${accent};margin-top:0.12in;">FROM ${s.toUpperCase()} ¬∑ ${num.toUpperCase()}</div></div>` +
+<div style="font-family:Inter,Arial,sans-serif;font-weight:700;font-size:9pt;letter-spacing:2px;color:${accent};margin-top:0.12in;">FROM ${s.toUpperCase()} · ${num.toUpperCase()}</div></div>` +
     // Cover panel
     `<div style="position:absolute;left:${P}in;top:0;width:${P}in;height:${H}in;background:${bg};overflow:hidden;">
 ${photos.length ? cover(pick(0), "inset:0") : K.pattern(accent)}
@@ -366,7 +366,7 @@ ${c.statLine ? `<div style="display:inline-block;margin-top:0.3in;font-family:In
 </div>
 <div style="position:absolute;left:0.75in;bottom:0.55in;">
 ${sig ? `<img src="${sig}" style="max-height:0.9in;max-width:3in;display:block;mix-blend-mode:multiply">` : `<div style="font-family:${F.handCss};font-weight:700;font-size:${pt(32, F.handSize)};color:#1B2B35;">${s}</div>`}
-<div style="font-family:Inter,Arial,sans-serif;font-size:9pt;color:#5A6A72;margin-top:0.05in;">&mdash; ${s} &nbsp;¬∑&nbsp; ${num}</div></div>
+<div style="font-family:Inter,Arial,sans-serif;font-size:9pt;color:#5A6A72;margin-top:0.05in;">&mdash; ${s} &nbsp;·&nbsp; ${num}</div></div>
 <div style="position:absolute;right:0.6in;bottom:0.55in;">${logoTag("0.6in", "#1B2B35")}</div>
 </div>`);
   return { outside, inside };
@@ -414,7 +414,7 @@ async function cardInfoForClaim(claim: any): Promise<CardInfo> {
     supporter: supporter?.display_name ?? "friend",
     reward: reward?.name ?? "A thank-you",
     statLine,
-    number: `#${count ?? 1} ¬∑ ${monthName} ${now.getUTCFullYear()}`,
+    number: `#${count ?? 1} · ${monthName} ${now.getUTCFullYear()}`,
     cardIndex: count ?? 1,
     tier: reward?.tier ?? null,
     styleKey: streamerId,
@@ -487,7 +487,7 @@ async function printful(path: string, init: RequestInit = {}) {
   return data.result;
 }
 
-// Find the catalog variant for a poster size like "18x24" (Printful names it 18‚Ä≥√ó24‚Ä≥).
+// Find the catalog variant for a poster size like "18x24" (Printful names it 18″×24″).
 async function posterVariantId(size: string): Promise<number> {
   const [w, h] = size.split("x");
   const product = await printful(`/products/${PRINTFUL_POSTER_PRODUCT_ID}`);
@@ -581,7 +581,7 @@ Deno.serve(async (req) => {
     const info: CardInfo = {
       streamer: st.display_name, avatar: st.avatar_url, supporter: "Jordan", reward: sample[tier!],
       statLine: `You gifted 25 subs in ${MONTHS[now.getUTCMonth()]}.`,
-      number: `#${n} ¬∑ ${MONTHS[now.getUTCMonth()]} ${now.getUTCFullYear()}`,
+      number: `#${n} · ${MONTHS[now.getUTCMonth()]} ${now.getUTCFullYear()}`,
       cardIndex: n, tier, styleKey: st.id, design: d,
     };
     const fmt = formatFor(tier);
