@@ -53,7 +53,7 @@
       </div>
       <div class="table-box">
         <table>
-          <thead><tr><th>On</th><th>Reward</th><th>Unlock rule</th><th>Monthly cap</th><th>Math</th><th></th></tr></thead>
+          <thead><tr><th>On</th><th>Reward</th><th>Unlock rule</th><th>Monthly cap</th><th></th></tr></thead>
           <tbody id="rewards"></tbody>
         </table>
       </div>
@@ -82,8 +82,6 @@
   let streamer = null;
   let rewards = [];
 
-  // What the streamer keeps per unit, in cents (approximate).
-  const VALUE_PER_UNIT = { gift_subs: 250, sub_months: 250, bits: 1, watch_hours: 1.5 };
   const RULE_LABEL = {
     gift_subs: ["count", "gift subs"],
     sub_months: ["months", "months subscribed"],
@@ -119,22 +117,11 @@
     return { type, key: map[0], label: map[1], value: Number(rule[map[0]]) || 0 };
   }
 
-  function mathText(reward, amount) {
-    const info = ruleInfo(reward.unlock_rule);
-    if (!info) return { text: "", warn: false };
-    const earned = amount * VALUE_PER_UNIT[info.type];
-    const needed = reward.cost_cents * 1.25;
-    return {
-      text: `Fan brings ~${dollars(earned)} · gift costs ${dollars(reward.cost_cents)}`,
-      warn: earned < needed,
-    };
-  }
-
   function renderRewards() {
     const body = $("rewards");
     body.replaceChildren();
     if (!rewards.length) {
-      body.append(el("tr", {}, [el("td", { colSpan: 6, className: "empty", textContent: "No rewards yet." })]));
+      body.append(el("tr", {}, [el("td", { colSpan: 5, className: "empty", textContent: "No rewards yet." })]));
       return;
     }
     rewards.forEach((r) => {
@@ -145,15 +132,6 @@
       amount.setAttribute("aria-label", "Unlock amount");
       const cap = el("input", { type: "number", min: "0", step: "1", value: r.monthly_cap ?? "" });
       cap.setAttribute("aria-label", "Monthly cap");
-      const calc = el("span", { className: "calc" });
-      const updateCalc = () => {
-        const m = mathText(r, Number(amount.value) || 0);
-        calc.textContent = m.warn ? m.text + " · below break-even" : m.text;
-        calc.classList.toggle("warn", m.warn);
-      };
-      amount.addEventListener("input", updateCalc);
-      updateCalc();
-
       const ruleCell = info
         ? el("div", { className: "row" }, [amount, el("span", { className: "calc", textContent: info.label + (r.unlock_rule.window === "month" ? " / month" : "") })])
         : el("span", { className: "calc", textContent: r.unlock_rule.type || "custom" });
@@ -178,7 +156,6 @@
         el("td", {}, [el("strong", { textContent: r.name }), el("div", { className: "calc", textContent: r.tier + " · " + r.item_type })]),
         el("td", {}, [ruleCell]),
         el("td", {}, [cap]),
-        el("td", {}, [calc]),
         el("td", {}, [save]),
       ]));
     });
