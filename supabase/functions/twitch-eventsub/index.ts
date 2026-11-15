@@ -1,6 +1,6 @@
 // Receives Twitch EventSub webhooks (subs, resubs, gift subs, bits, channel point
-// redemptions), verifies Twitch's signature, records the event, and creates any
-// claims the supporter just unlocked.
+// redemptions, stream online/offline), verifies Twitch's signature, records the
+// event, and creates any claims the supporter just unlocked.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SECRET = Deno.env.get("TWITCH_EVENTSUB_SECRET") ?? "";
@@ -90,6 +90,16 @@ Deno.serve(async (req) => {
     return new Response("Lookup failed", { status: 500 });
   }
   if (!streamer) return done();
+
+  // Live state drives the watch-time tracker's 5-minute chat roll call.
+  if (subType === "stream.online") {
+    await db.from("streamers").update({ is_live: true, live_since: new Date().toISOString() }).eq("id", streamer.id);
+    return done();
+  }
+  if (subType === "stream.offline") {
+    await db.from("streamers").update({ is_live: false }).eq("id", streamer.id);
+    return done();
+  }
 
   let ev: SupporterEvent | null = null;
   const tierCents = TIER_CENTS[e.tier as string] ?? 250;
