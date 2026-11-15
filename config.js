@@ -5,5 +5,5 @@ window.CLICKTIDE = {
   SUPABASE_URL: "https://cjzafsnsumlpifewbqaq.supabase.co",
   SUPABASE_KEY: "sb_publishable_ZjThojXpFMf_miWs7AI5MQ_Of98bXmd",
   // Twitch permissions the streamer grants when connecting.
-  STREAMER_SCOPES: "user:read:email channel:read:subscriptions bits:read channel:read:redemptions",
+  STREAMER_SCOPES: "user:read:email channel:read:subscriptions bits:read channel:read:redemptions moderator:read:chatters",
 };
