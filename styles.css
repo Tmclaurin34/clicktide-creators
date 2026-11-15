@@ -208,3 +208,10 @@ a.btn.small { padding: 10px 18px; height: 38px; font-size: 13px; border-radius: 
 .partner-form textarea:focus { outline: 2px solid #D655A5; outline-offset: 2px; }
 .hp-field { position: absolute; left: -5000px; opacity: 0; }
 @media (max-width: 900px) { .partner-grid { grid-template-columns: 1fr; } }
+
+/* Gift source tags + connect-store tile */
+.gift-src { display:inline-block; font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; padding:3px 9px; border-radius:999px; margin-bottom:9px; }
+.src-ct { background:rgba(118,245,188,.18); color:#9FE2A0; }
+.src-store { background:rgba(255,156,141,.16); color:var(--primary); }
+.gift-connect { border:2px dashed var(--line-strong); }
+.gift-connect svg { color:#fff; }
