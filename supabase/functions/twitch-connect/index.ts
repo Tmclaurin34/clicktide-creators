@@ -1,5 +1,6 @@
 // Called by the streamer dashboard after "Log in with Twitch".
-// Creates (or finds) the streamer row and subscribes the channel to Twitch EventSub.
+// Creates (or finds) the streamer row, stores their Twitch refresh token (for the
+// watch-time tracker), and subscribes the channel to Twitch EventSub.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -23,6 +24,8 @@ const EVENT_TYPES = [
   "channel.subscription.gift",
   "channel.cheer",
   "channel.channel_points_custom_reward_redemption.add",
+  "stream.online",
+  "stream.offline",
 ];
 
 async function appToken(): Promise<string> {
@@ -92,6 +95,13 @@ Deno.serve(async (req) => {
   const rawAvatar = String(idData.avatar_url ?? idData.picture ?? "");
   const avatarUrl = rawAvatar.startsWith("https://static-cdn.jtvnw.net/") ? rawAvatar : null;
 
+  // The dashboard forwards the Twitch refresh token from the login session so the
+  // watch-time tracker can act for this channel later.
+  let body: Record<string, unknown> = {};
+  try { body = await req.json(); } catch { /* no body */ }
+  const refreshToken = typeof body.refresh_token === "string" && body.refresh_token.length > 20
+    ? body.refresh_token : null;
+
   const db = createClient(SUPABASE_URL, SERVICE_KEY);
 
   const { data: existing, error: findErr } = await db
@@ -119,6 +129,19 @@ Deno.serve(async (req) => {
     streamer = { ...existing, avatar_url: avatarUrl };
   }
 
+  let watchTracking = false;
+  if (refreshToken && streamer) {
+    const { error: tokErr } = await db.from("streamer_tokens").upsert(
+      { streamer_id: streamer.id, refresh_token: refreshToken, updated_at: new Date().toISOString() },
+      { onConflict: "streamer_id" },
+    );
+    if (tokErr) console.error("Saving refresh token failed", tokErr);
+    else watchTracking = true;
+  } else if (streamer) {
+    const { data: tok } = await db.from("streamer_tokens").select("streamer_id").eq("streamer_id", streamer.id).maybeSingle();
+    watchTracking = !!tok;
+  }
+
   let subscriptions: Record<string, string> | string = "Twitch keys not set yet";
   if (CLIENT_ID && CLIENT_SECRET && EVENTSUB_SECRET) {
     try {
@@ -129,5 +152,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ streamer, subscriptions });
+  return json({ streamer, subscriptions, watch_tracking: watchTracking });
 });
