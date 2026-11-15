@@ -147,6 +147,11 @@
     <div class="card">
       <h2 id="channel-name">Your channel</h2>
       <p class="sub" id="connection-status">Checking your Twitch connection…</p>
+      <div class="row hidden" id="challenge-row" style="margin:-6px 0 16px">
+        <span class="calc">Viewer challenge page:</span>
+        <button id="copy-challenge" class="secondary small" type="button">Copy link</button>
+        <a id="open-challenge" class="calc" target="_blank" rel="noopener">open it</a>
+      </div>
       <form id="budget-form" class="row">
         <label>Monthly budget (USD, 0 = no limit)
           <input id="budget" type="number" min="0" step="1" inputmode="numeric">
@@ -332,14 +337,24 @@
     });
   }
 
-  async function connect() {
-    const { data, error } = await sb.functions.invoke("twitch-connect", { method: "POST" });
+  async function connect(session) {
+    const { data, error } = await sb.functions.invoke("twitch-connect", {
+      method: "POST",
+      body: { refresh_token: session?.provider_refresh_token ?? null },
+    });
     if (error || !data?.streamer) {
       $("connection-status").textContent = "Couldn't connect your channel. Try logging out and in again.";
       return false;
     }
     streamer = data.streamer;
     $("channel-name").textContent = streamer.display_name;
+    const chLink = new URL("challenge.html?c=" + streamer.id, location.href).toString();
+    $("challenge-row").classList.remove("hidden");
+    $("open-challenge").href = chLink;
+    $("copy-challenge").onclick = async () => {
+      try { await navigator.clipboard.writeText(chLink); notify("Challenge link copied — share it with your viewers."); }
+      catch { prompt("Copy your challenge link:", chLink); }
+    };
     $("budget").value = Math.round((streamer.monthly_budget_cents || 0) / 100);
     const subs = data.subscriptions;
     if (typeof subs === "string") {
@@ -350,6 +365,9 @@
         ? "Connected, but some Twitch events failed to subscribe: " + failed.map(([k]) => k).join(", ")
         : "Connected. Tracking subs, gift subs, bits and channel points live.";
     }
+    if (data.watch_tracking === false) {
+      $("connection-status").textContent += " To start counting watch hours, log out and log back in once.";
+    }
     return true;
   }
 
@@ -358,7 +376,7 @@
     $("login-top").classList.add("hidden");
     $("app-view").classList.remove("hidden");
     $("logout").classList.remove("hidden");
-    const ok = await connect();
+    const ok = await connect(session);
     if (!ok) return;
     await Promise.all([loadRewards(), loadClaims()]);
   }
