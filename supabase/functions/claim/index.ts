@@ -75,6 +75,7 @@ type CardInfo = {
   tier?: string | null; // common | rare | epic | legendary: rarer gifts get a special border and a bigger format
   styleKey: string;   // fallback seed (streamer id) when no style was saved
   design: CardDesign;
+  totals?: { hours: number; gifts: number; bits: number; months: number; since: string | null };
 };
 
 // Only our own storage and Twitch's image host ever go into a card.
@@ -372,6 +373,116 @@ ${sig ? `<img src="${sig}" style="max-height:0.9in;max-width:3in;display:block;m
   return { outside, inside };
 }
 
+
+// ---------- Letters (8.5x11, mailed flat in an envelope): certificates,
+// fanniversary cards and the year-in-review. Top 2.2in is left clear for the
+// address window Lob prints on the first page. ----------
+const LETTER_ITEMS = new Set(["certificate", "anniversary_card", "year_review"]);
+
+const letterPage = (fontsQ: string, body: string) =>
+  `<html>${head(fontsQ)}<body style="margin:0;width:8.5in;height:11in;background:#FFFFFF;position:relative;overflow:hidden;">
+<div style="position:absolute;left:0.55in;right:0.55in;top:2.3in;bottom:0.5in;">${body}</div>
+</body></html>`;
+
+function certificateHtml(c: CardInfo): string {
+  const K = cardKit(c);
+  const { accent, F, pt, s, f, r, num, sig, logo } = K;
+  const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return letterPage(K.F.q,
+    `<div style="position:absolute;inset:0;border:0.045in solid ${accent};"></div>
+<div style="position:absolute;inset:0.12in;border:0.015in solid ${accent};"></div>
+<div style="position:absolute;inset:0.12in;${patternCss(K.st.pattern, accent)}opacity:.18;"></div>
+<div style="position:absolute;left:0.6in;right:0.6in;top:0.55in;text-align:center;">
+${logo ? `<img src="${logo}" style="max-height:0.8in;max-width:2.6in">` : `<div style="font-family:${F.headCss};font-size:${pt(26, F.headSize)};color:#1B2B35;">${s}</div>`}
+<div style="font-family:Inter,Arial,sans-serif;font-weight:800;font-size:11pt;letter-spacing:5px;color:${accent};margin-top:0.35in;">CERTIFICATE OF SUPPORT</div>
+<div style="font-family:${F.headCss};font-size:${pt(34, F.headSize)};color:#1B2B35;line-height:1.08;margin-top:0.18in;">${r}</div>
+<div style="font-family:Inter,Arial,sans-serif;font-size:10.5pt;color:#5A6A72;margin-top:0.42in;letter-spacing:1px;">proudly presented to</div>
+<div style="font-family:${F.handCss};font-weight:700;font-size:${pt(44, F.handSize)};color:#1B2B35;margin-top:0.08in;">${f}</div>
+${c.statLine ? `<div style="display:inline-block;margin-top:0.3in;font-family:Inter,Arial,sans-serif;font-weight:800;font-size:11pt;color:#FFFFFF;background:${accent};padding:0.09in 0.26in;border-radius:0.3in;">${esc(c.statLine)}</div>` : ""}
+</div>
+<div style="position:absolute;left:0.8in;right:0.8in;bottom:0.55in;display:flex;justify-content:space-between;align-items:flex-end;">
+<div style="text-align:left;">
+${sig ? `<img src="${sig}" style="max-height:0.6in;max-width:2in;display:block;mix-blend-mode:multiply">` : `<div style="font-family:${F.handCss};font-weight:700;font-size:${pt(22, F.handSize)};color:#1B2B35;">${s}</div>`}
+<div style="font-family:Inter,Arial,sans-serif;font-size:8pt;color:#5A6A72;border-top:1px solid #C9C3B6;padding-top:0.05in;margin-top:0.05in;">${s}</div></div>
+<div style="text-align:right;font-family:Inter,Arial,sans-serif;font-size:8pt;color:#5A6A72;">${esc(today)}<br>${num}</div>
+</div>`);
+}
+
+function anniversaryHtml(c: CardInfo): string {
+  const K = cardKit(c);
+  const { accent, F, pt, s, f, sig } = K;
+  const t = c.totals ?? { hours: 0, gifts: 0, bits: 0, months: 0, since: null };
+  const sinceStr = t.since
+    ? new Date(t.since).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : "the very beginning";
+  const years = t.since ? Math.max(1, Math.round((Date.now() - Date.parse(t.since)) / (365.25 * 24 * 3600 * 1000))) : 1;
+  const bits: string[] = [];
+  if (t.hours > 0) bits.push(`${t.hours} hours on stream with us`);
+  if (t.gifts > 0) bits.push(`${t.gifts} subs gifted to this community`);
+  if (t.months > 0) bits.push(`${t.months} months subscribed`);
+  const statSentence = bits.length ? `Since then: ${bits.join(" · ")}.` : "";
+  return letterPage(K.F.q,
+    `<div style="position:absolute;left:0;top:0;bottom:0;width:0.14in;background:${accent};"></div>
+<div style="position:absolute;inset:0;${patternCss(K.st.pattern, accent)}opacity:.12;"></div>
+<div style="position:absolute;left:0.7in;right:0.7in;top:0.4in;">
+<div style="font-family:Inter,Arial,sans-serif;font-weight:800;font-size:10pt;letter-spacing:4px;color:${accent};">FANNIVERSARY</div>
+<div style="font-family:${F.headCss};font-size:${pt(40, F.headSize)};color:#1B2B35;line-height:1.05;margin-top:0.15in;">${years === 1 ? "One year" : years + " years"} of showing up.</div>
+<div style="font-family:${F.handCss};font-weight:700;font-size:${pt(26, F.handSize)};color:#1B2B35;margin-top:0.45in;">Hey ${f},</div>
+<div style="font-family:Inter,Arial,sans-serif;font-size:12pt;line-height:1.7;color:#2A3A44;margin-top:0.2in;max-width:6.4in;">
+On ${esc(sinceStr)}, you showed up for the first time. Most people pass through. You stayed.
+${statSentence ? `<br><br><span style="font-weight:700;color:${accent};">${esc(statSentence)}</span>` : ""}
+<br><br>Streams are just empty rooms until people like you walk in. Thanks for a year of being part of this one. Here's to the next.
+</div>
+<div style="margin-top:0.55in;">
+${sig ? `<img src="${sig}" style="max-height:0.7in;max-width:2.4in;display:block;mix-blend-mode:multiply">` : `<div style="font-family:${F.handCss};font-weight:700;font-size:${pt(28, F.handSize)};color:#1B2B35;">— ${s}</div>`}
+</div>
+</div>`);
+}
+
+function yearReviewHtml(c: CardInfo): string {
+  const K = cardKit(c);
+  const { accent, bg, F, pt, s, f } = K;
+  const t = c.totals ?? { hours: 0, gifts: 0, bits: 0, months: 0, since: null };
+  const year = new Date().getUTCFullYear();
+  const sinceStr = t.since ? new Date(t.since).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "day one";
+  const tiles: { n: string; l: string }[] = [];
+  if (t.hours > 0) tiles.push({ n: String(t.hours), l: "HOURS WATCHED" });
+  if (t.gifts > 0) tiles.push({ n: String(t.gifts), l: "SUBS GIFTED" });
+  if (t.months > 0) tiles.push({ n: String(t.months), l: "MONTHS SUBSCRIBED" });
+  if (t.bits > 0) tiles.push({ n: t.bits.toLocaleString("en-US"), l: "BITS CHEERED" });
+  tiles.push({ n: esc(sinceStr), l: "HERE SINCE" });
+  const tileHtml = tiles.slice(0, 4).map((x) =>
+    `<div style="flex:1;min-width:1.6in;background:${bg};border-radius:0.14in;padding:0.3in 0.2in;text-align:center;margin:0.07in;">
+<div style="font-family:${F.headCss};font-size:${pt(30, F.headSize)};color:#FFFFFF;line-height:1;">${x.n}</div>
+<div style="font-family:Inter,Arial,sans-serif;font-weight:800;font-size:7.5pt;letter-spacing:2px;color:${accent};margin-top:0.1in;">${x.l}</div></div>`).join("");
+  return letterPage(K.F.q,
+    `<div style="position:absolute;inset:0;${patternCss(K.st.pattern, accent)}opacity:.12;"></div>
+<div style="position:absolute;left:0.6in;right:0.6in;top:0.35in;">
+<div style="font-family:Inter,Arial,sans-serif;font-weight:800;font-size:10pt;letter-spacing:4px;color:${accent};">YOUR ${year} WRAPPED</div>
+<div style="font-family:${F.headCss};font-size:${pt(38, F.headSize)};color:#1B2B35;line-height:1.05;margin-top:0.12in;">${f} × ${s}</div>
+<div style="display:flex;flex-wrap:wrap;margin:0.4in -0.07in 0;">${tileHtml}</div>
+<div style="font-family:Inter,Arial,sans-serif;font-size:11.5pt;line-height:1.65;color:#2A3A44;margin-top:0.42in;max-width:6.6in;">
+Numbers are just numbers — but behind every one of these is a night you chose to spend here. ${esc(s)} sees it. This one's for the wall.
+</div>
+<div style="display:inline-block;margin-top:0.35in;font-family:Inter,Arial,sans-serif;font-weight:800;font-size:10pt;color:#FFFFFF;background:${accent};padding:0.08in 0.24in;border-radius:0.3in;">OFFICIAL ${year} SUPPORTER — ${esc(c.number)}</div>
+</div>`);
+}
+
+async function sendLobLetter(addr: Record<string, string | null>, html: string, fromAddress: unknown, description: string) {
+  const res = await fetch("https://api.lob.com/v1/letters", {
+    method: "POST",
+    headers: { Authorization: lobAuth(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      to: lobTo(addr), from: fromAddress, file: html,
+      color: true, address_placement: "top_first_page", use_type: "marketing",
+      description: description.slice(0, 255),
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Lob letter ${res.status}: ${JSON.stringify(data?.error ?? data)}`);
+  return data as { id: string };
+}
+
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 // Builds the personal details for one claim: their stat line and this card's number.
@@ -395,6 +506,8 @@ async function cardInfoForClaim(claim: any): Promise<CardInfo> {
     .reduce((n: number, e: any) => n + (e.quantity || 0), 0);
   const giftsAllTime = ev.filter((e: any) => e.event_type === "gift_sub").reduce((n: number, e: any) => n + (e.quantity || 0), 0);
   const subMonths = ev.filter((e: any) => e.event_type === "resub").reduce((m: number, e: any) => Math.max(m, e.quantity || 0), 0);
+  const watchMinutes = ev.filter((e: any) => e.event_type === "watch_time").reduce((n: number, e: any) => n + (e.quantity || 0), 0);
+  const bitsAll = ev.filter((e: any) => e.event_type === "bits").reduce((n: number, e: any) => n + (e.quantity || 0), 0);
   const first = ev.map((e: any) => e.occurred_at).sort()[0];
 
   const rule = reward?.unlock_rule?.type;
@@ -419,6 +532,7 @@ async function cardInfoForClaim(claim: any): Promise<CardInfo> {
     tier: reward?.tier ?? null,
     styleKey: streamerId,
     design: design ?? {},
+    totals: { hours: Math.floor(watchMinutes / 60), gifts: giftsAllTime, bits: bitsAll, months: subMonths, since: first ?? null },
   };
 }
 
@@ -716,6 +830,15 @@ Deno.serve(async (req) => {
       const order = fmt === "6x18_bifold"
         ? await sendLobSelfMailer(address, mailerHtml(info), fromAddr)
         : await sendLobPostcard(address, cardHtml(info, fmt), fromAddr, fmt);
+      await db.from("claims").update({ status: "ordered", provider: "lob", provider_order_id: order.id }).eq("id", claim.id);
+      return json({ status: "ordered" });
+    }
+    if (LETTER_ITEMS.has(type) && LOB_API_KEY && LOB_FROM_ADDRESS_ID) {
+      const info = await cardInfoForClaim(claim);
+      const html = type === "certificate" ? certificateHtml(info)
+        : type === "anniversary_card" ? anniversaryHtml(info)
+        : yearReviewHtml(info);
+      const order = await sendLobLetter(address, html, await streamerFromAddress(info.streamer), `${type} for ${info.supporter}`);
       await db.from("claims").update({ status: "ordered", provider: "lob", provider_order_id: order.id }).eq("id", claim.id);
       return json({ status: "ordered" });
     }
