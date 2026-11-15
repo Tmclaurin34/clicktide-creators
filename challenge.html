@@ -77,6 +77,8 @@
     if (ch.type === "supporter_value" || ch.type === "fan_value")
       return "$" + (((ch.progress ?? 0)) / 100).toFixed(2) + " / $" + ((ch.target ?? 0) / 100).toFixed(2) + " support";
     if (ch.type === "channel_points") return "Redeem with channel points on Twitch";
+    if (ch.type === "fanniversary") return "Unlocks on your 1-year anniversary of supporting";
+    if (ch.type === "year_review") return "Your whole year, printed — arrives in December";
     return "";
   }
 
