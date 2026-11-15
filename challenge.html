@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Channel Challenges · Clicktide Creators</title>
+<meta name="description" content="Watch, gift, cheer — fill the bar and earn real mail from your favorite streamer.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='14' width='56' height='36' rx='6' fill='%230F1B24'/%3E%3Crect x='10' y='20' width='24' height='4' rx='2' fill='%232BB3AA'/%3E%3Crect x='10' y='28' width='18' height='3' rx='1.5' fill='%23F7F5F0'/%3E%3Crect x='10' y='34' width='14' height='3' rx='1.5' fill='%23F7F5F0' opacity='.6'/%3E%3Ccircle cx='50' cy='24' r='6' fill='%232BB3AA'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;600;700;800&family=Orbitron:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./" style="text-decoration:none">Clicktide <span class="badge">CREATORS</span></a>
+    <div class="row">
+      <span id="who" class="calc hidden"></span>
+      <button id="login-top" class="secondary small hidden" type="button">Log in with Twitch</button>
+      <button id="logout" class="secondary small hidden" type="button">Log out</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" style="max-width:860px">
+  <div id="notice" class="msg hidden" role="status"></div>
+
+  <section class="ch-head">
+    <img id="ch-avatar" class="ch-avatar hidden" alt="">
+    <p class="eyebrow" style="margin-bottom:8px">Channel challenges <span id="live-pill" class="live-pill hidden">LIVE</span></p>
+    <h1 id="ch-title" class="ch-title">Loading&hellip;</h1>
+    <p id="ch-sub" class="section-sub" style="margin-bottom:0">Watch, gift, cheer &mdash; fill the bar and real mail shows up at your door.</p>
+  </section>
+
+  <section id="login-cta-card" class="card center hidden" style="padding:22px">
+    <p class="sub" style="margin:0 0 14px">Log in with Twitch to see <strong>your</strong> progress on every bar.</p>
+    <button id="login" type="button">Log in with Twitch</button>
+    <p class="fineprint">We only read your public Twitch identity. Your address is only ever asked for when you claim a gift &mdash; and the streamer never sees it.</p>
+  </section>
+
+  <div id="challenges" class="ch-grid"></div>
+
+  <footer class="site-footer" style="margin-top:40px">
+    <div class="footer-inner">
+      <p class="fineprint">Gifts are printed and mailed by <a href="./">Clicktide Creators</a>. Not affiliated with or endorsed by Twitch.</p>
+    </div>
+  </footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  const cfg = window.CLICKTIDE;
+  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_KEY);
+  const $ = (id) => document.getElementById(id);
+  const streamerId = new URLSearchParams(location.search).get("c") || "";
+  const fnUrl = cfg.SUPABASE_URL + "/functions/v1/progress?streamer=" + encodeURIComponent(streamerId);
+
+  function notify(text, isError) {
+    const n = $("notice");
+    n.textContent = text;
+    n.classList.toggle("error", !!isError);
+    n.classList.remove("hidden");
+  }
+
+  function fmt(ch) {
+    if (ch.type === "watch_hours") {
+      const h = Math.floor((ch.progress ?? 0) / 60), m = Math.round((ch.progress ?? 0) % 60);
+      const th = Math.round((ch.target ?? 0) / 60);
+      return (ch.progress == null ? "?" : h + "h " + m + "m") + " / " + th + " hours watched";
+    }
+    if (ch.type === "sub_months") return (ch.progress ?? "?") + " / " + ch.target + " months subscribed";
+    if (ch.type === "gift_subs") return (ch.progress ?? "?") + " / " + ch.target + " gift subs" + (ch.window === "month" ? " this month" : "");
+    if (ch.type === "bits") return (ch.progress ?? "?") + " / " + ch.target + " bits" + (ch.window === "month" ? " this month" : "");
+    if (ch.type === "supporter_value" || ch.type === "fan_value")
+      return "$" + (((ch.progress ?? 0)) / 100).toFixed(2) + " / $" + ((ch.target ?? 0) / 100).toFixed(2) + " support";
+    if (ch.type === "channel_points") return "Redeem with channel points on Twitch";
+    return "";
+  }
+
+  function render(data) {
+    $("ch-title").textContent = data.streamer.name;
+    document.title = data.streamer.name + " · Channel Challenges";
+    if (data.streamer.avatar) { $("ch-avatar").src = data.streamer.avatar; $("ch-avatar").classList.remove("hidden"); }
+    $("live-pill").classList.toggle("hidden", !data.streamer.live);
+
+    if (data.me) {
+      $("who").textContent = "Signed in as " + data.me.name;
+      $("who").classList.remove("hidden");
+      $("logout").classList.remove("hidden");
+      $("login-top").classList.add("hidden");
+      $("login-cta-card").classList.add("hidden");
+    } else {
+      $("login-top").classList.remove("hidden");
+      $("logout").classList.add("hidden");
+      $("login-cta-card").classList.remove("hidden");
+    }
+
+    const box = $("challenges");
+    box.replaceChildren();
+    for (const ch of data.challenges) {
+      const card = document.createElement("div");
+      card.className = "ch-card tier-" + ch.tier;
+
+      const pct = ch.unlocked ? 100
+        : (ch.target && ch.progress != null) ? Math.min(100, Math.floor((ch.progress / ch.target) * 100)) : 0;
+
+      let action = "";
+      if (ch.claim && ch.claim.token) {
+        action = '<a class="btn small ch-claim" href="claim.html?token=' + encodeURIComponent(ch.claim.token) + '">Claim your gift</a>';
+      } else if (ch.claim) {
+        const words = { claimed: "Claimed", ordered: "On its way", shipped: "Shipped" };
+        action = '<span class="pill">' + (words[ch.claim.status] || ch.claim.status) + "</span>";
+      } else if (ch.unlocked) {
+        action = '<span class="pill">Unlocked</span>';
+      }
+
+      card.innerHTML =
+        '<div class="ch-row"><span class="ch-name"></span><span class="ch-tier ch-tier-' + ch.tier + '">' + ch.tier.toUpperCase() + "</span></div>" +
+        '<div class="ch-meta"></div>' +
+        '<div class="bar"><div class="bar-fill' + (ch.unlocked ? " full" : "") + '" style="width:' + pct + '%"></div></div>' +
+        '<div class="ch-row" style="margin-top:10px"><span class="ch-progress"></span><span class="ch-action">' + action + "</span></div>";
+      card.querySelector(".ch-name").textContent = ch.name;
+      card.querySelector(".ch-meta").textContent = "Prize: real " + ch.item_type.replace("_", " ") + ", printed and mailed to you";
+      card.querySelector(".ch-progress").textContent = data.me ? fmt(ch) : fmt(ch).replace(/^\?/, "Log in to track");
+      box.append(card);
+    }
+    if (!data.challenges.length) {
+      box.innerHTML = '<p class="empty center">No active challenges yet. Check back soon.</p>';
+    }
+  }
+
+  async function load() {
+    if (!streamerId) { notify("This challenge link is missing its channel code.", true); return; }
+    const { data: s } = await sb.auth.getSession();
+    const headers = { apikey: cfg.SUPABASE_KEY };
+    if (s.session) headers.Authorization = "Bearer " + s.session.access_token;
+    const res = await fetch(fnUrl, { headers });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { notify(data.error || "Couldn't load this channel.", true); return; }
+    render(data);
+  }
+
+  async function doLogin() {
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: "twitch",
+      options: { redirectTo: location.origin + location.pathname + location.search },
+    });
+    if (error) notify("Login isn't available right now: " + error.message, true);
+  }
+  $("login").addEventListener("click", doLogin);
+  $("login-top").addEventListener("click", doLogin);
+  $("logout").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
+
+  load();
+})();
+</script>
+</body>
+</html>
