@@ -79,14 +79,21 @@
   }
 
   function fmt(ch) {
+    const niceDate = (d) => {
+      const dt = new Date(d + "T00:00:00Z");
+      return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    };
+    const when = ch.window === "month" ? " this month"
+      : ch.window === "year" ? " this year"
+      : ch.window === "range" && ch.starts_at ? " · " + niceDate(ch.starts_at) + " – " + niceDate(ch.ends_at) : "";
     if (ch.type === "watch_hours") {
       const h = Math.floor((ch.progress ?? 0) / 60), m = Math.round((ch.progress ?? 0) % 60);
       const th = Math.round((ch.target ?? 0) / 60);
-      return (ch.progress == null ? "?" : h + "h " + m + "m") + " / " + th + " hours watched";
+      return (ch.progress == null ? "?" : h + "h " + m + "m") + " / " + th + " hours watched" + when;
     }
     if (ch.type === "sub_months") return (ch.progress ?? "?") + " / " + ch.target + " months subscribed";
-    if (ch.type === "gift_subs") return (ch.progress ?? "?") + " / " + ch.target + " gift subs" + (ch.window === "month" ? " this month" : "");
-    if (ch.type === "bits") return (ch.progress ?? "?") + " / " + ch.target + " bits" + (ch.window === "month" ? " this month" : "");
+    if (ch.type === "gift_subs") return (ch.progress ?? "?") + " / " + ch.target + " gift subs" + when;
+    if (ch.type === "bits") return (ch.progress ?? "?") + " / " + ch.target + " bits" + when;
     if (ch.type === "supporter_value" || ch.type === "fan_value")
       return "$" + (((ch.progress ?? 0)) / 100).toFixed(2) + " / $" + ((ch.target ?? 0) / 100).toFixed(2) + " support";
     if (ch.type === "channel_points") return "Redeem with channel points on Twitch";
