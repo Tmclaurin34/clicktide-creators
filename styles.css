@@ -193,6 +193,18 @@ td input[type="number"] { width: 90px; }
 .rw-sent { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; color: var(--text-second); font-size: 14px; margin-top: 7px; }
 .rw-in { width: 62px; min-height: 34px; padding: 4px 8px; text-align: center; border-radius: 10px; background: var(--surface-2); border: 1px solid transparent; color: var(--text); font: inherit; font-weight: 700; }
 .rw-in:focus { border-color: var(--line-strong); outline: none; }
+.rw-name[contenteditable] { outline: none; border-bottom: 1px dashed transparent; cursor: text; padding-bottom: 1px; }
+.rw-name[contenteditable]:hover { border-bottom-color: var(--line-strong); }
+.rw-name[contenteditable]:focus { border-bottom-color: var(--primary); }
+.rw-chip-sel { appearance: none; -webkit-appearance: none; border: 1px solid transparent; cursor: pointer; font-family: var(--font-body); }
+.rw-chip-sel:hover { border-color: rgba(255, 255, 255, 0.35); }
+.rw-chip-sel option { background: #12152A; color: #fff; text-transform: none; }
+.rw-sel { appearance: none; -webkit-appearance: none; background: var(--surface-2); border: 1px solid transparent; border-radius: 10px; padding: 6px 12px; min-height: 34px; color: var(--text); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.rw-sel:hover, .rw-sel:focus { border-color: var(--line-strong); outline: none; }
+.rw-sel option { background: #12152A; color: #fff; }
+.rw-del { background: none; border: none; height: auto; padding: 2px 4px; margin-left: auto; font-size: 12px; font-weight: 700; color: var(--text-quiet); cursor: pointer; border-radius: 6px; }
+.rw-del:hover { color: #FF9C8D; transform: none; box-shadow: none; }
+.rw-del.armed { color: #FF9C8D; }
 .rw-saved { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; color: #9FE2A0; opacity: 0; transition: opacity .3s ease; }
 .rw-saved.show { opacity: 1; }
 .switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; cursor: pointer; display: inline-block; margin-top: 2px; }
