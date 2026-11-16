@@ -221,7 +221,17 @@ td input[type="number"] { width: 90px; }
 .ch-sec-h { font-size: 13px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--primary); margin: 26px 0 10px; }
 .rw-row.open { background: rgba(255, 255, 255, 0.025); border-radius: 14px; border-top-color: transparent; padding-left: 14px; margin-top: 12px; }
 .rw-saved { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; color: #9FE2A0; opacity: 0; transition: opacity .3s ease; }
-.rw-saved.show { opacity: 1; }
+.rw-saved.show { opacity: 1; animation: savedpop .35s ease; }
+@keyframes savedpop { 0% { transform: scale(0.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.rw-art { width: 46px; height: 46px; border-radius: 13px; }
+.rw-art svg { width: 24px; height: 24px; }
+.rw-row:not(.open):hover { background: rgba(255, 255, 255, 0.02); }
+.st-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 4px 0 16px; }
+.st-tile { background: rgba(255, 255, 255, 0.045); border-radius: 16px; padding: 18px 12px; text-align: center; transition: transform .15s ease; }
+.st-tile:hover { transform: translateY(-2px); }
+.st-num { font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.st-lab { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; color: var(--text-quiet); margin-top: 8px; }
+@media (max-width: 560px) { .st-num { font-size: 24px; } .st-tiles { gap: 8px; } }
 .switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; cursor: pointer; display: inline-block; margin-top: 2px; }
 .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
 .switch .knob { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.14); border-radius: 100px; transition: background .2s ease; }
