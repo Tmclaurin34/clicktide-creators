@@ -211,12 +211,8 @@
         <button class="secondary small" type="button" data-preset="balanced">Balanced</button>
         <button class="secondary small" type="button" data-preset="exclusive">Exclusive</button>
       </div>
-      <div class="table-box">
-        <table>
-          <thead><tr><th>On</th><th>Reward</th><th>Unlock rule</th><th>Monthly cap</th><th></th></tr></thead>
-          <tbody id="rewards"></tbody>
-        </table>
-      </div>
+      <div id="rewards" class="rw-list"></div>
+      <p class="fineprint" style="margin-top:14px">Changes save themselves the moment you make them.</p>
     </div>
 
     <div class="card">
@@ -277,47 +273,82 @@
     return { type, key: map[0], label: map[1], value: Number(rule[map[0]]) || 0 };
   }
 
+  // Plain words for everything the machine calls by its code name.
+  const ITEM_WORD = {
+    postcard: "Postcard", certificate: "Certificate", anniversary_card: "Fanniversary letter",
+    year_review: "Year-in-review print", handwritten_card: "Pen-written card", poster: "Poster",
+    tee: "Tee", hoodie: "Hoodie", pack: "Mystery pack", sticker_pack: "Sticker pack",
+    mug: "Mug", hat: "Hat", keychain: "Keychain",
+  };
+  const SCHEDULED_WORD = {
+    fanniversary: "goes out on each fan's one-year anniversary, automatically",
+    year_review: "goes out every December, automatically",
+  };
+  const itemWord = (t) => ITEM_WORD[t] || (t || "gift").replaceAll("_", " ");
+
   function renderRewards() {
     const body = $("rewards");
     body.replaceChildren();
     if (!rewards.length) {
-      body.append(el("tr", {}, [el("td", { colSpan: 5, className: "empty", textContent: "No rewards yet." })]));
+      body.append(el("p", { className: "empty", textContent: "No rewards yet." }));
       return;
     }
     rewards.forEach((r) => {
       const info = ruleInfo(r.unlock_rule);
-      const active = el("input", { type: "checkbox", checked: r.active });
-      active.setAttribute("aria-label", "Reward on");
-      const amount = el("input", { type: "number", min: "1", step: "1", value: info ? info.value : "" });
-      amount.setAttribute("aria-label", "Unlock amount");
-      const cap = el("input", { type: "number", min: "0", step: "1", value: r.monthly_cap ?? "" });
-      cap.setAttribute("aria-label", "Monthly cap");
-      const ruleCell = info
-        ? el("div", { className: "row" }, [amount, el("span", { className: "calc", textContent: info.label + (r.unlock_rule.window === "month" ? " / month" : "") })])
-        : el("span", { className: "calc", textContent: r.unlock_rule.type || "custom" });
 
-      const save = el("button", { className: "small", type: "button", textContent: "Save" });
-      save.addEventListener("click", async () => {
-        const rule = Object.assign({}, r.unlock_rule);
-        if (info) rule[info.key] = Math.max(1, Math.floor(Number(amount.value) || 1));
-        const capVal = cap.value === "" ? null : Math.max(0, Math.floor(Number(cap.value)));
-        save.disabled = true;
-        const { error } = await sb.from("rewards")
-          .update({ unlock_rule: rule, monthly_cap: capVal, active: active.checked })
-          .eq("id", r.id);
-        save.disabled = false;
+      const toggle = el("input", { type: "checkbox", checked: r.active });
+      toggle.setAttribute("aria-label", "Reward on");
+      const knob = el("span", { className: "knob" });
+      const sw = el("label", { className: "switch" }, [toggle, knob]);
+
+      const savedTick = el("span", { className: "rw-saved", textContent: "Saved" });
+      let tickTimer;
+      async function autosave(patch, apply) {
+        const { error } = await sb.from("rewards").update(patch).eq("id", r.id);
         if (error) return notify("Couldn't save: " + error.message, true);
-        r.unlock_rule = rule; r.monthly_cap = capVal; r.active = active.checked;
-        notify(`Saved “${r.name}”.`);
-      });
+        apply();
+        savedTick.classList.add("show");
+        clearTimeout(tickTimer);
+        tickTimer = setTimeout(() => savedTick.classList.remove("show"), 1600);
+      }
 
-      body.append(el("tr", {}, [
-        el("td", {}, [active]),
-        el("td", {}, [el("strong", { textContent: r.name }), el("div", { className: "calc", textContent: r.tier + " · " + r.item_type })]),
-        el("td", {}, [ruleCell]),
-        el("td", {}, [cap]),
-        el("td", {}, [save]),
-      ]));
+      toggle.addEventListener("change", () =>
+        autosave({ active: toggle.checked }, () => { r.active = toggle.checked; row.classList.toggle("off", !toggle.checked); }));
+
+      const sentence = el("span", { className: "rw-sent" });
+      sentence.append(itemWord(r.item_type) + " · ");
+      if (info) {
+        const amount = el("input", { type: "number", min: "1", step: "1", value: info.value, className: "rw-in" });
+        amount.setAttribute("aria-label", "Unlock amount");
+        amount.addEventListener("change", () => {
+          const rule = Object.assign({}, r.unlock_rule);
+          rule[info.key] = Math.max(1, Math.floor(Number(amount.value) || 1));
+          autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; });
+        });
+        sentence.append("unlocks at ", amount, " " + info.label + (r.unlock_rule.window === "month" ? " in a month" : ""));
+      } else {
+        sentence.append(SCHEDULED_WORD[r.unlock_rule.type] || "custom unlock");
+      }
+      const cap = el("input", { type: "number", min: "0", step: "1", value: r.monthly_cap ?? "", placeholder: "∞", className: "rw-in" });
+      cap.setAttribute("aria-label", "Monthly cap");
+      cap.addEventListener("change", () => {
+        const capVal = cap.value === "" ? null : Math.max(0, Math.floor(Number(cap.value)));
+        autosave({ monthly_cap: capVal }, () => { r.monthly_cap = capVal; });
+      });
+      sentence.append(" · up to ", cap, " a month");
+
+      const row = el("div", { className: "rw-row" + (r.active ? "" : " off") }, [
+        sw,
+        el("div", { className: "rw-main" }, [
+          el("div", { className: "rw-top" }, [
+            el("span", { className: "rw-name", textContent: r.name }),
+            el("span", { className: "ch-tier ch-tier-" + r.tier, textContent: r.tier.toUpperCase() }),
+            savedTick,
+          ]),
+          sentence,
+        ]),
+      ]);
+      body.append(row);
     });
   }
 
