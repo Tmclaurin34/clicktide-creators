@@ -195,8 +195,6 @@
   </div>
 
   <!-- Logged in -->
-  <div id="dash-backdrop" class="ch-backdrop" style="display:none" aria-hidden="true"></div>
-  <div id="dash-fade" class="ch-backdrop-fade" style="display:none" aria-hidden="true"></div>
   <section id="app-view" class="hidden" style="display:flex;flex-direction:column;gap:24px">
     <div class="card">
       <div class="ch-head-row" style="margin-bottom:10px">
@@ -699,15 +697,9 @@
     }
     streamer = data.streamer;
     $("channel-name").textContent = streamer.display_name;
-    // The channel's own art becomes the dashboard's glow — same treatment fans get.
     if (streamer.avatar_url) {
       $("dash-avatar").src = streamer.avatar_url;
       $("dash-avatar").classList.remove("hidden");
-      const bd = $("dash-backdrop");
-      bd.style.display = "";
-      $("dash-fade").style.display = "";
-      bd.style.backgroundImage = "url('" + streamer.avatar_url + "')";
-      requestAnimationFrame(() => bd.classList.add("on"));
     }
     if (streamer.is_live) $("dash-live").classList.remove("hidden");
     const chLink = new URL("challenge.html?c=" + streamer.id, location.href).toString();
