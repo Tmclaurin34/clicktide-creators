@@ -148,7 +148,23 @@
 
     const box = $("challenges");
     box.replaceChildren();
-    for (const ch of data.challenges) {
+    // Group challenges under the creator's sections; ungrouped ones follow at the end.
+    const secList = data.sections || [];
+    const ordered = [];
+    for (const sc of secList) {
+      const items = data.challenges.filter((c) => c.section_id === sc.id);
+      if (items.length) ordered.push({ name: sc.name, items });
+    }
+    const loose = data.challenges.filter((c) => !c.section_id || !secList.some((sc) => sc.id === c.section_id));
+    if (loose.length) ordered.push({ name: null, items: loose });
+    for (const group of ordered) {
+      if (group.name) {
+        const h = document.createElement("p");
+        h.className = "ch-sec-h";
+        h.textContent = group.name;
+        box.append(h);
+      }
+      for (const ch of group.items) {
       const card = document.createElement("div");
       card.className = "ch-card tier-" + ch.tier;
       card.dataset.state = ch.claim ? "claimed" : ch.unlocked ? "unlocked" : "progress";
@@ -177,6 +193,7 @@
       card.querySelector(".ch-meta").textContent = "Prize: real " + ch.item_type.replace("_", " ") + ", printed and mailed to you";
       card.querySelector(".ch-progress").textContent = data.me ? fmt(ch) : fmt(ch).replace(/^\?/, "Log in to track");
       box.append(card);
+      }
     }
     if (!data.challenges.length) {
       box.innerHTML = '<p class="empty center">No active challenges yet. Check back soon.</p>';
