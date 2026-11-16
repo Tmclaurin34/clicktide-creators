@@ -223,6 +223,7 @@
       </div>
       <div id="rewards" class="rw-list"></div>
       <button id="rw-add" class="secondary small" type="button" style="margin-top:16px">+ Add a reward</button>
+      <button id="sec-add" class="secondary small" type="button" style="margin-top:16px;margin-left:8px">+ Add a section</button>
       <p class="fineprint" style="margin-top:14px">Changes save themselves the moment you make them. New rewards start switched off.</p>
     </div>
 
@@ -319,204 +320,262 @@
   };
 
   const unlocked = new Set(); // rows open for editing right now; everything locks again on reload
+  let sections = [];
+
+  function renderRow(r) {
+    const info = ruleInfo(r.unlock_rule);
+    const isOpen = unlocked.has(r.id);
+
+    const toggle = el("input", { type: "checkbox", checked: r.active });
+    toggle.setAttribute("aria-label", "Reward on");
+    const knob = el("span", { className: "knob" });
+    const sw = el("label", { className: "switch" }, [toggle, knob]);
+
+    const savedTick = el("span", { className: "rw-saved", textContent: "Saved" });
+    let tickTimer;
+    async function autosave(patch, apply, rerender) {
+      const { error } = await sb.from("rewards").update(patch).eq("id", r.id);
+      if (error) return notify("Couldn't save: " + error.message, true);
+      apply();
+      if (rerender) return renderRewards();
+      savedTick.classList.add("show");
+      clearTimeout(tickTimer);
+      tickTimer = setTimeout(() => savedTick.classList.remove("show"), 1600);
+    }
+
+    toggle.addEventListener("change", () =>
+      autosave({ active: toggle.checked }, () => { r.active = toggle.checked; row.classList.toggle("off", !toggle.checked); }));
+
+    const top = el("div", { className: "rw-top" });
+    const sentence = el("span", { className: "rw-sent" });
+
+    if (!isOpen) {
+      // -------- Locked in: plain words, nothing to change by accident. Two taps to edit. --------
+      top.append(
+        el("span", { className: "rw-name rw-name-locked", textContent: r.name }),
+        el("span", { className: "ch-tier ch-tier-" + r.tier, textContent: r.tier.toUpperCase() }),
+        savedTick,
+      );
+      const edit = el("button", { className: "rw-del rw-edit", type: "button", textContent: "Edit" });
+      let armed = false, armTimer;
+      edit.addEventListener("click", () => {
+        if (!armed) {
+          armed = true;
+          edit.textContent = "Tap again to edit";
+          edit.classList.add("armed");
+          armTimer = setTimeout(() => { armed = false; edit.textContent = "Edit"; edit.classList.remove("armed"); }, 3500);
+          return;
+        }
+        clearTimeout(armTimer);
+        unlocked.add(r.id);
+        renderRewards();
+      });
+      top.append(edit);
+
+      const capTxt = r.monthly_cap == null ? "no monthly cap" : "up to " + r.monthly_cap + " a month";
+      if (info) {
+        let when = "";
+        if (WINDOWED.has(r.unlock_rule.type)) {
+          when = typeof r.unlock_rule.starts_at === "string"
+            ? " · " + r.unlock_rule.starts_at + " to " + r.unlock_rule.ends_at
+            : r.unlock_rule.window === "month" ? " each month"
+            : r.unlock_rule.window === "year" ? " this year" : " all-time";
+        }
+        sentence.append(itemWord(r.item_type) + " · unlocks at " + info.value + " " + (RULE_WORD[r.unlock_rule.type] || info.label) + when + " · " + capTxt);
+      } else {
+        sentence.append(itemWord(r.item_type) + " · goes out on " + (RULE_WORD[r.unlock_rule.type] || "a schedule") + " · " + capTxt);
+      }
+    } else {
+      // -------- Open for editing: full controls, then Done locks it back in. --------
+      const name = el("span", { className: "rw-name", textContent: r.name });
+      name.contentEditable = "true";
+      name.spellcheck = false;
+      name.setAttribute("aria-label", "Reward name");
+      name.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); name.blur(); } });
+      name.addEventListener("blur", () => {
+        const v = name.textContent.trim().slice(0, 60) || r.name;
+        name.textContent = v;
+        if (v !== r.name) autosave({ name: v }, () => { r.name = v; });
+      });
+
+      const tierSel = el("select", { className: "ch-tier rw-chip-sel ch-tier-" + r.tier });
+      tierSel.setAttribute("aria-label", "Rarity");
+      TIERS.forEach((t) => tierSel.append(el("option", { value: t, textContent: t.toUpperCase(), selected: t === r.tier })));
+      tierSel.addEventListener("change", () =>
+        autosave({ tier: tierSel.value }, () => { r.tier = tierSel.value; }, true));
+
+      const done = el("button", { className: "small rw-done", type: "button", textContent: "Done" });
+      done.addEventListener("click", () => { unlocked.delete(r.id); renderRewards(); });
+
+      const del = el("button", { className: "rw-del", type: "button", textContent: "Remove" });
+      let armed = false, armTimer;
+      del.addEventListener("click", async () => {
+        if (!armed) {
+          armed = true;
+          del.textContent = "Really remove?";
+          del.classList.add("armed");
+          armTimer = setTimeout(() => { armed = false; del.textContent = "Remove"; del.classList.remove("armed"); }, 3500);
+          return;
+        }
+        clearTimeout(armTimer);
+        const { error } = await sb.from("rewards").delete().eq("id", r.id);
+        if (error) return notify("Couldn't remove: " + error.message, true);
+        unlocked.delete(r.id);
+        rewards = rewards.filter((x) => x.id !== r.id);
+        renderRewards();
+        notify(`Removed “${r.name}”.`);
+      });
+
+      top.append(name, tierSel, savedTick, done, del);
+
+      const itemSel = el("select", { className: "rw-sel" });
+      itemSel.setAttribute("aria-label", "Gift type");
+      Object.keys(ITEM_WORD).forEach((t) => itemSel.append(el("option", { value: t, textContent: ITEM_WORD[t], selected: t === r.item_type })));
+      if (!ITEM_WORD[r.item_type]) itemSel.append(el("option", { value: r.item_type, textContent: itemWord(r.item_type), selected: true }));
+      itemSel.addEventListener("change", () =>
+        autosave({ item_type: itemSel.value, cost_cents: COST_BY_ITEM[itemSel.value] ?? r.cost_cents },
+          () => { r.item_type = itemSel.value; r.cost_cents = COST_BY_ITEM[itemSel.value] ?? r.cost_cents; }, true));
+      sentence.append(itemSel, " · ");
+
+      const ruleSel = el("select", { className: "rw-sel" });
+      ruleSel.setAttribute("aria-label", "How it unlocks");
+      Object.keys(RULE_WORD).forEach((t) => ruleSel.append(el("option", { value: t, textContent: RULE_WORD[t], selected: t === r.unlock_rule.type })));
+      if (!RULE_WORD[r.unlock_rule.type]) ruleSel.append(el("option", { value: r.unlock_rule.type, textContent: r.unlock_rule.type, selected: true }));
+      ruleSel.addEventListener("change", () => {
+        const rule = RULE_DEFAULT[ruleSel.value] ? Object.assign({}, RULE_DEFAULT[ruleSel.value]) : { type: ruleSel.value };
+        autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; }, true);
+      });
+
+      if (info) {
+        const amount = el("input", { type: "number", min: "1", step: "1", value: info.value, className: "rw-in" });
+        amount.setAttribute("aria-label", "Unlock amount");
+        amount.addEventListener("change", () => {
+          const rule = Object.assign({}, r.unlock_rule);
+          rule[info.key] = Math.max(1, Math.floor(Number(amount.value) || 1));
+          autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; });
+        });
+        sentence.append("unlocks at ", amount, " ", ruleSel);
+
+        if (WINDOWED.has(r.unlock_rule.type)) {
+          const hasDates = typeof r.unlock_rule.starts_at === "string" && typeof r.unlock_rule.ends_at === "string";
+          const winNow = hasDates ? "range" : (r.unlock_rule.window === "month" || r.unlock_rule.window === "year") ? r.unlock_rule.window : "once";
+          const winSel = el("select", { className: "rw-sel" });
+          winSel.setAttribute("aria-label", "When it counts");
+          Object.keys(WIN_WORD).forEach((w) => winSel.append(el("option", { value: w, textContent: WIN_WORD[w], selected: w === winNow })));
+          winSel.addEventListener("change", () => {
+            const rule = Object.assign({}, r.unlock_rule);
+            delete rule.window; delete rule.starts_at; delete rule.ends_at;
+            if (winSel.value === "month" || winSel.value === "year") rule.window = winSel.value;
+            if (winSel.value === "range") {
+              const today = new Date();
+              const iso = (d) => d.toISOString().slice(0, 10);
+              rule.starts_at = iso(today);
+              rule.ends_at = iso(new Date(today.getTime() + 13 * 86400000));
+            }
+            autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; }, true);
+          });
+          sentence.append(" ", winSel);
+
+          if (hasDates) {
+            const d1 = el("input", { type: "date", value: r.unlock_rule.starts_at, className: "rw-in rw-date" });
+            const d2 = el("input", { type: "date", value: r.unlock_rule.ends_at, className: "rw-in rw-date" });
+            d1.setAttribute("aria-label", "Start date");
+            d2.setAttribute("aria-label", "End date");
+            const saveDates = () => {
+              if (!d1.value || !d2.value) return;
+              if (d2.value < d1.value) d2.value = d1.value;
+              const rule = Object.assign({}, r.unlock_rule, { starts_at: d1.value, ends_at: d2.value });
+              delete rule.window;
+              autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; });
+            };
+            d1.addEventListener("change", saveDates);
+            d2.addEventListener("change", saveDates);
+            sentence.append(" ", d1, " to ", d2);
+          }
+        }
+      } else {
+        sentence.append("goes out on ", ruleSel);
+      }
+
+      const cap = el("input", { type: "number", min: "0", step: "1", value: r.monthly_cap ?? "", placeholder: "∞", className: "rw-in" });
+      cap.setAttribute("aria-label", "Monthly cap");
+      cap.addEventListener("change", () => {
+        const capVal = cap.value === "" ? null : Math.max(0, Math.floor(Number(cap.value)));
+        autosave({ monthly_cap: capVal }, () => { r.monthly_cap = capVal; });
+      });
+      sentence.append(" · up to ", cap, " a month");
+
+      if (sections.length) {
+        const secSel = el("select", { className: "rw-sel" });
+        secSel.setAttribute("aria-label", "Section");
+        secSel.append(el("option", { value: "", textContent: "no section", selected: !r.section_id }));
+        sections.forEach((sc) => secSel.append(el("option", { value: sc.id, textContent: sc.name, selected: sc.id === r.section_id })));
+        secSel.addEventListener("change", () =>
+          autosave({ section_id: secSel.value || null }, () => { r.section_id = secSel.value || null; }, true));
+        sentence.append(" · in ", secSel);
+      }
+    }
+
+    const row = el("div", { className: "rw-row" + (r.active ? "" : " off") + (isOpen ? " open" : "") }, [
+      sw,
+      el("div", { className: "rw-main" }, [top, sentence]),
+    ]);
+    return row;
+  }
+
+  function sectionHead(sc) {
+    const name = el("span", { className: "rw-sec-name", textContent: sc.name });
+    name.contentEditable = "true";
+    name.spellcheck = false;
+    name.setAttribute("aria-label", "Section name");
+    name.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); name.blur(); } });
+    name.addEventListener("blur", async () => {
+      const v = name.textContent.trim().slice(0, 50) || sc.name;
+      name.textContent = v;
+      if (v === sc.name) return;
+      const { error } = await sb.from("reward_sections").update({ name: v }).eq("id", sc.id);
+      if (error) return notify("Couldn't rename section: " + error.message, true);
+      sc.name = v;
+    });
+    const del = el("button", { className: "rw-del", type: "button", textContent: "Remove section" });
+    let armed = false, armTimer;
+    del.addEventListener("click", async () => {
+      if (!armed) {
+        armed = true;
+        del.textContent = "Rewards stay — really remove?";
+        del.classList.add("armed");
+        armTimer = setTimeout(() => { armed = false; del.textContent = "Remove section"; del.classList.remove("armed"); }, 4000);
+        return;
+      }
+      clearTimeout(armTimer);
+      const { error } = await sb.from("reward_sections").delete().eq("id", sc.id);
+      if (error) return notify("Couldn't remove section: " + error.message, true);
+      rewards.forEach((r) => { if (r.section_id === sc.id) r.section_id = null; });
+      sections = sections.filter((x) => x.id !== sc.id);
+      renderRewards();
+      notify(`Removed the “${sc.name}” section — its rewards are still here.`);
+    });
+    return el("div", { className: "rw-sec-h" }, [name, del]);
+  }
 
   function renderRewards() {
     const body = $("rewards");
     body.replaceChildren();
-    if (!rewards.length) {
+    if (!rewards.length && !sections.length) {
       body.append(el("p", { className: "empty", textContent: "No rewards yet — add your first one below." }));
       return;
     }
-    rewards.forEach((r) => {
-      const info = ruleInfo(r.unlock_rule);
-      const isOpen = unlocked.has(r.id);
-
-      const toggle = el("input", { type: "checkbox", checked: r.active });
-      toggle.setAttribute("aria-label", "Reward on");
-      const knob = el("span", { className: "knob" });
-      const sw = el("label", { className: "switch" }, [toggle, knob]);
-
-      const savedTick = el("span", { className: "rw-saved", textContent: "Saved" });
-      let tickTimer;
-      async function autosave(patch, apply, rerender) {
-        const { error } = await sb.from("rewards").update(patch).eq("id", r.id);
-        if (error) return notify("Couldn't save: " + error.message, true);
-        apply();
-        if (rerender) return renderRewards();
-        savedTick.classList.add("show");
-        clearTimeout(tickTimer);
-        tickTimer = setTimeout(() => savedTick.classList.remove("show"), 1600);
-      }
-
-      toggle.addEventListener("change", () =>
-        autosave({ active: toggle.checked }, () => { r.active = toggle.checked; row.classList.toggle("off", !toggle.checked); }));
-
-      const top = el("div", { className: "rw-top" });
-      const sentence = el("span", { className: "rw-sent" });
-
-      if (!isOpen) {
-        // -------- Locked in: plain words, nothing to change by accident. Two taps to edit. --------
-        top.append(
-          el("span", { className: "rw-name rw-name-locked", textContent: r.name }),
-          el("span", { className: "ch-tier ch-tier-" + r.tier, textContent: r.tier.toUpperCase() }),
-          savedTick,
-        );
-        const edit = el("button", { className: "rw-del rw-edit", type: "button", textContent: "Edit" });
-        let armed = false, armTimer;
-        edit.addEventListener("click", () => {
-          if (!armed) {
-            armed = true;
-            edit.textContent = "Tap again to edit";
-            edit.classList.add("armed");
-            armTimer = setTimeout(() => { armed = false; edit.textContent = "Edit"; edit.classList.remove("armed"); }, 3500);
-            return;
-          }
-          clearTimeout(armTimer);
-          unlocked.add(r.id);
-          renderRewards();
-        });
-        top.append(edit);
-
-        const capTxt = r.monthly_cap == null ? "no monthly cap" : "up to " + r.monthly_cap + " a month";
-        if (info) {
-          let when = "";
-          if (WINDOWED.has(r.unlock_rule.type)) {
-            when = typeof r.unlock_rule.starts_at === "string"
-              ? " · " + r.unlock_rule.starts_at + " to " + r.unlock_rule.ends_at
-              : r.unlock_rule.window === "month" ? " each month"
-              : r.unlock_rule.window === "year" ? " this year" : " all-time";
-          }
-          sentence.append(itemWord(r.item_type) + " · unlocks at " + info.value + " " + (RULE_WORD[r.unlock_rule.type] || info.label) + when + " · " + capTxt);
-        } else {
-          sentence.append(itemWord(r.item_type) + " · goes out on " + (RULE_WORD[r.unlock_rule.type] || "a schedule") + " · " + capTxt);
-        }
-      } else {
-        // -------- Open for editing: full controls, then Done locks it back in. --------
-        const name = el("span", { className: "rw-name", textContent: r.name });
-        name.contentEditable = "true";
-        name.spellcheck = false;
-        name.setAttribute("aria-label", "Reward name");
-        name.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); name.blur(); } });
-        name.addEventListener("blur", () => {
-          const v = name.textContent.trim().slice(0, 60) || r.name;
-          name.textContent = v;
-          if (v !== r.name) autosave({ name: v }, () => { r.name = v; });
-        });
-
-        const tierSel = el("select", { className: "ch-tier rw-chip-sel ch-tier-" + r.tier });
-        tierSel.setAttribute("aria-label", "Rarity");
-        TIERS.forEach((t) => tierSel.append(el("option", { value: t, textContent: t.toUpperCase(), selected: t === r.tier })));
-        tierSel.addEventListener("change", () =>
-          autosave({ tier: tierSel.value }, () => { r.tier = tierSel.value; }, true));
-
-        const done = el("button", { className: "small rw-done", type: "button", textContent: "Done" });
-        done.addEventListener("click", () => { unlocked.delete(r.id); renderRewards(); });
-
-        const del = el("button", { className: "rw-del", type: "button", textContent: "Remove" });
-        let armed = false, armTimer;
-        del.addEventListener("click", async () => {
-          if (!armed) {
-            armed = true;
-            del.textContent = "Really remove?";
-            del.classList.add("armed");
-            armTimer = setTimeout(() => { armed = false; del.textContent = "Remove"; del.classList.remove("armed"); }, 3500);
-            return;
-          }
-          clearTimeout(armTimer);
-          const { error } = await sb.from("rewards").delete().eq("id", r.id);
-          if (error) return notify("Couldn't remove: " + error.message, true);
-          unlocked.delete(r.id);
-          rewards = rewards.filter((x) => x.id !== r.id);
-          renderRewards();
-          notify(`Removed “${r.name}”.`);
-        });
-
-        top.append(name, tierSel, savedTick, done, del);
-
-        const itemSel = el("select", { className: "rw-sel" });
-        itemSel.setAttribute("aria-label", "Gift type");
-        Object.keys(ITEM_WORD).forEach((t) => itemSel.append(el("option", { value: t, textContent: ITEM_WORD[t], selected: t === r.item_type })));
-        if (!ITEM_WORD[r.item_type]) itemSel.append(el("option", { value: r.item_type, textContent: itemWord(r.item_type), selected: true }));
-        itemSel.addEventListener("change", () =>
-          autosave({ item_type: itemSel.value, cost_cents: COST_BY_ITEM[itemSel.value] ?? r.cost_cents },
-            () => { r.item_type = itemSel.value; r.cost_cents = COST_BY_ITEM[itemSel.value] ?? r.cost_cents; }, true));
-        sentence.append(itemSel, " · ");
-
-        const ruleSel = el("select", { className: "rw-sel" });
-        ruleSel.setAttribute("aria-label", "How it unlocks");
-        Object.keys(RULE_WORD).forEach((t) => ruleSel.append(el("option", { value: t, textContent: RULE_WORD[t], selected: t === r.unlock_rule.type })));
-        if (!RULE_WORD[r.unlock_rule.type]) ruleSel.append(el("option", { value: r.unlock_rule.type, textContent: r.unlock_rule.type, selected: true }));
-        ruleSel.addEventListener("change", () => {
-          const rule = RULE_DEFAULT[ruleSel.value] ? Object.assign({}, RULE_DEFAULT[ruleSel.value]) : { type: ruleSel.value };
-          autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; }, true);
-        });
-
-        if (info) {
-          const amount = el("input", { type: "number", min: "1", step: "1", value: info.value, className: "rw-in" });
-          amount.setAttribute("aria-label", "Unlock amount");
-          amount.addEventListener("change", () => {
-            const rule = Object.assign({}, r.unlock_rule);
-            rule[info.key] = Math.max(1, Math.floor(Number(amount.value) || 1));
-            autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; });
-          });
-          sentence.append("unlocks at ", amount, " ", ruleSel);
-
-          if (WINDOWED.has(r.unlock_rule.type)) {
-            const hasDates = typeof r.unlock_rule.starts_at === "string" && typeof r.unlock_rule.ends_at === "string";
-            const winNow = hasDates ? "range" : (r.unlock_rule.window === "month" || r.unlock_rule.window === "year") ? r.unlock_rule.window : "once";
-            const winSel = el("select", { className: "rw-sel" });
-            winSel.setAttribute("aria-label", "When it counts");
-            Object.keys(WIN_WORD).forEach((w) => winSel.append(el("option", { value: w, textContent: WIN_WORD[w], selected: w === winNow })));
-            winSel.addEventListener("change", () => {
-              const rule = Object.assign({}, r.unlock_rule);
-              delete rule.window; delete rule.starts_at; delete rule.ends_at;
-              if (winSel.value === "month" || winSel.value === "year") rule.window = winSel.value;
-              if (winSel.value === "range") {
-                const today = new Date();
-                const iso = (d) => d.toISOString().slice(0, 10);
-                rule.starts_at = iso(today);
-                rule.ends_at = iso(new Date(today.getTime() + 13 * 86400000));
-              }
-              autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; }, true);
-            });
-            sentence.append(" ", winSel);
-
-            if (hasDates) {
-              const d1 = el("input", { type: "date", value: r.unlock_rule.starts_at, className: "rw-in rw-date" });
-              const d2 = el("input", { type: "date", value: r.unlock_rule.ends_at, className: "rw-in rw-date" });
-              d1.setAttribute("aria-label", "Start date");
-              d2.setAttribute("aria-label", "End date");
-              const saveDates = () => {
-                if (!d1.value || !d2.value) return;
-                if (d2.value < d1.value) d2.value = d1.value;
-                const rule = Object.assign({}, r.unlock_rule, { starts_at: d1.value, ends_at: d2.value });
-                delete rule.window;
-                autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; });
-              };
-              d1.addEventListener("change", saveDates);
-              d2.addEventListener("change", saveDates);
-              sentence.append(" ", d1, " to ", d2);
-            }
-          }
-        } else {
-          sentence.append("goes out on ", ruleSel);
-        }
-
-        const cap = el("input", { type: "number", min: "0", step: "1", value: r.monthly_cap ?? "", placeholder: "∞", className: "rw-in" });
-        cap.setAttribute("aria-label", "Monthly cap");
-        cap.addEventListener("change", () => {
-          const capVal = cap.value === "" ? null : Math.max(0, Math.floor(Number(cap.value)));
-          autosave({ monthly_cap: capVal }, () => { r.monthly_cap = capVal; });
-        });
-        sentence.append(" · up to ", cap, " a month");
-      }
-
-      const row = el("div", { className: "rw-row" + (r.active ? "" : " off") + (isOpen ? " open" : "") }, [
-        sw,
-        el("div", { className: "rw-main" }, [top, sentence]),
-      ]);
-      body.append(row);
+    const loose = rewards.filter((r) => !r.section_id || !sections.some((sc) => sc.id === r.section_id));
+    sections.forEach((sc) => {
+      body.append(sectionHead(sc));
+      const mine = rewards.filter((r) => r.section_id === sc.id);
+      if (!mine.length) body.append(el("p", { className: "empty rw-sec-empty", textContent: "Nothing in this section yet — open a reward and pick it." }));
+      mine.forEach((r) => body.append(renderRow(r)));
     });
+    if (sections.length && loose.length) {
+      body.append(el("div", { className: "rw-sec-h rw-sec-loose" }, [el("span", { className: "rw-sec-name-static", textContent: "No section" })]));
+    }
+    loose.forEach((r) => body.append(renderRow(r)));
   }
 
   $("rw-add").addEventListener("click", async () => {
@@ -529,6 +588,16 @@
     unlocked.add(data.id); // brand-new rewards open ready to edit
     renderRewards();
     notify("Reward added — name it, set the rule, then switch it on.");
+  });
+
+  $("sec-add").addEventListener("click", async () => {
+    const { data, error } = await sb.from("reward_sections").insert({
+      streamer_id: streamer.id, name: "New section", position: sections.length,
+    }).select().single();
+    if (error) return notify("Couldn't add a section: " + error.message, true);
+    sections.push(data);
+    renderRewards();
+    notify("Section added — click its name to rename it.");
   });
 
   async function applyPreset(name) {
@@ -552,6 +621,8 @@
   }
 
   async function loadRewards() {
+    const { data: secs } = await sb.from("reward_sections").select("*").eq("streamer_id", streamer.id).order("position").order("created_at");
+    sections = secs ?? [];
     const { data, error } = await sb.from("rewards").select("*").eq("streamer_id", streamer.id).order("cost_cents");
     if (error) return notify("Couldn't load rewards: " + error.message, true);
     rewards = data;
