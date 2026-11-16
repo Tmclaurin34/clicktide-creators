@@ -12,6 +12,8 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div id="ch-backdrop" class="ch-backdrop" aria-hidden="true"></div>
+<div class="ch-backdrop-fade" aria-hidden="true"></div>
 <header class="topbar">
   <div class="wrap">
     <a class="brand" href="./" style="text-decoration:none">Clicktide <span class="badge">CREATORS</span></a>
@@ -27,9 +29,13 @@
   <div id="notice" class="msg hidden" role="status"></div>
 
   <section class="ch-head">
-    <img id="ch-avatar" class="ch-avatar hidden" alt="">
-    <p class="eyebrow" style="margin-bottom:8px">Channel challenges <span id="live-pill" class="live-pill hidden">LIVE</span></p>
-    <h1 id="ch-title" class="ch-title">Loading&hellip;</h1>
+    <div class="ch-head-row">
+      <img id="ch-avatar" class="ch-avatar hidden" alt="">
+      <div>
+        <p class="eyebrow" style="margin:0 0 4px">Channel challenges <span id="live-pill" class="live-pill hidden">LIVE</span></p>
+        <h1 id="ch-title" class="ch-title">Loading&hellip;</h1>
+      </div>
+    </div>
     <p id="ch-sub" class="section-sub" style="margin-bottom:0">Watch, gift, cheer &mdash; fill the bar and real mail shows up at your door.</p>
   </section>
 
@@ -38,6 +44,13 @@
     <button id="login" type="button">Log in with Twitch</button>
     <p class="fineprint">We only read your public Twitch identity. Your address is only ever asked for when you claim a gift &mdash; and the streamer never sees it.</p>
   </section>
+
+  <div id="ch-chips" class="ch-chips hidden">
+    <button class="ch-chip on" data-f="all" type="button">All</button>
+    <button class="ch-chip" data-f="progress" type="button">In progress</button>
+    <button class="ch-chip" data-f="unlocked" type="button">Unlocked</button>
+    <button class="ch-chip" data-f="claimed" type="button">Claimed</button>
+  </div>
 
   <div id="challenges" class="ch-grid"></div>
 
@@ -85,7 +98,14 @@
   function render(data) {
     $("ch-title").textContent = data.streamer.name;
     document.title = data.streamer.name + " · Channel Challenges";
-    if (data.streamer.avatar) { $("ch-avatar").src = data.streamer.avatar; $("ch-avatar").classList.remove("hidden"); }
+    if (data.streamer.avatar) {
+      $("ch-avatar").src = data.streamer.avatar;
+      $("ch-avatar").classList.remove("hidden");
+      // The channel's own art becomes the page's glow.
+      const bd = $("ch-backdrop");
+      bd.style.backgroundImage = "url('" + data.streamer.avatar + "')";
+      bd.classList.add("on");
+    }
     $("live-pill").classList.toggle("hidden", !data.streamer.live);
 
     if (data.me) {
@@ -105,6 +125,7 @@
     for (const ch of data.challenges) {
       const card = document.createElement("div");
       card.className = "ch-card tier-" + ch.tier;
+      card.dataset.state = ch.claim ? "claimed" : ch.unlocked ? "unlocked" : "progress";
 
       const pct = ch.unlocked ? 100
         : (ch.target && ch.progress != null) ? Math.min(100, Math.floor((ch.progress / ch.target) * 100)) : 0;
@@ -132,7 +153,19 @@
     if (!data.challenges.length) {
       box.innerHTML = '<p class="empty center">No active challenges yet. Check back soon.</p>';
     }
+    $("ch-chips").classList.toggle("hidden", !data.challenges.length);
   }
+
+  // Filter chips: All / In progress / Unlocked / Claimed
+  document.querySelectorAll(".ch-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".ch-chip").forEach((c) => c.classList.toggle("on", c === chip));
+      const f = chip.dataset.f;
+      document.querySelectorAll(".ch-card").forEach((card) => {
+        card.style.display = f === "all" || card.dataset.state === f ? "" : "none";
+      });
+    });
+  });
 
   async function load() {
     if (!streamerId) { notify("This challenge link is missing its channel code.", true); return; }
