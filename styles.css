@@ -182,6 +182,25 @@ td input[type="number"] { width: 90px; }
 .ch-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 22px; }
 .ch-chip { border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--text); border-radius: 100px; padding: 9px 18px; height: auto; font-size: 13px; font-weight: 700; }
 .ch-chip.on { background: #fff; color: #04050e; border-color: #fff; }
+
+/* ---------- Rewards: sentence rows with inline autosaving inputs ---------- */
+.rw-list { display: flex; flex-direction: column; }
+.rw-row { display: flex; align-items: flex-start; gap: 16px; padding: 20px 4px 20px 0; border-top: 1px solid var(--line); transition: opacity .2s ease; }
+.rw-row.off .rw-main { opacity: 0.4; }
+.rw-main { flex: 1; min-width: 0; }
+.rw-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rw-name { font-weight: 700; font-size: 16px; }
+.rw-sent { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; color: var(--text-second); font-size: 14px; margin-top: 7px; }
+.rw-in { width: 62px; min-height: 34px; padding: 4px 8px; text-align: center; border-radius: 10px; background: var(--surface-2); border: 1px solid transparent; color: var(--text); font: inherit; font-weight: 700; }
+.rw-in:focus { border-color: var(--line-strong); outline: none; }
+.rw-saved { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; color: #9FE2A0; opacity: 0; transition: opacity .3s ease; }
+.rw-saved.show { opacity: 1; }
+.switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; cursor: pointer; display: inline-block; margin-top: 2px; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch .knob { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.14); border-radius: 100px; transition: background .2s ease; }
+.switch .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .2s ease; }
+.switch input:checked + .knob { background: var(--grad); }
+.switch input:checked + .knob::after { transform: translateX(18px); }
 .ch-title { font-family: var(--font-display); font-size: clamp(30px, 4.6vw, 52px); font-weight: 600; letter-spacing: -0.02em; }
 .live-pill { display: inline-block; margin-left: 8px; background: rgba(67, 142, 68, 0.25); color: #9FE2A0; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; padding: 3px 10px; border-radius: 999px; vertical-align: middle; animation: livepulse 2s ease-in-out infinite; }
 @keyframes livepulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
