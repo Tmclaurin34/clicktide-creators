@@ -304,9 +304,11 @@
     hoodie: 3500, pack: 2500, mug: 1600, hat: 1800, keychain: 900,
   };
   const RULE_WORD = {
-    gift_subs: "gift subs in a month", sub_months: "months subscribed", watch_hours: "hours watched",
-    bits: "bits in a month", fanniversary: "their one-year fanniversary", year_review: "December — their year recap",
+    gift_subs: "gift subs", sub_months: "months subscribed", watch_hours: "hours watched",
+    bits: "bits", fanniversary: "their one-year fanniversary", year_review: "December — their year recap",
   };
+  const WINDOWED = new Set(["gift_subs", "bits", "watch_hours"]);
+  const WIN_WORD = { once: "all-time", month: "each month", year: "this year", range: "between dates…" };
   const RULE_DEFAULT = {
     gift_subs: { type: "gift_subs", count: 10, window: "month" },
     sub_months: { type: "sub_months", months: 6 },
@@ -396,6 +398,45 @@
           autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; });
         });
         sentence.append("unlocks at ", amount, " ", ruleSel);
+
+        // When it counts: all-time, each month, this year, or a custom date window.
+        if (WINDOWED.has(r.unlock_rule.type)) {
+          const hasDates = typeof r.unlock_rule.starts_at === "string" && typeof r.unlock_rule.ends_at === "string";
+          const winNow = hasDates ? "range" : (r.unlock_rule.window === "month" || r.unlock_rule.window === "year") ? r.unlock_rule.window : "once";
+          const winSel = el("select", { className: "rw-sel" });
+          winSel.setAttribute("aria-label", "When it counts");
+          Object.keys(WIN_WORD).forEach((w) => winSel.append(el("option", { value: w, textContent: WIN_WORD[w], selected: w === winNow })));
+          winSel.addEventListener("change", () => {
+            const rule = Object.assign({}, r.unlock_rule);
+            delete rule.window; delete rule.starts_at; delete rule.ends_at;
+            if (winSel.value === "month" || winSel.value === "year") rule.window = winSel.value;
+            if (winSel.value === "range") {
+              const today = new Date();
+              const iso = (d) => d.toISOString().slice(0, 10);
+              rule.starts_at = iso(today);
+              rule.ends_at = iso(new Date(today.getTime() + 13 * 86400000));
+            }
+            autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; }, true);
+          });
+          sentence.append(" ", winSel);
+
+          if (hasDates) {
+            const d1 = el("input", { type: "date", value: r.unlock_rule.starts_at, className: "rw-in rw-date" });
+            const d2 = el("input", { type: "date", value: r.unlock_rule.ends_at, className: "rw-in rw-date" });
+            d1.setAttribute("aria-label", "Start date");
+            d2.setAttribute("aria-label", "End date");
+            const saveDates = () => {
+              if (!d1.value || !d2.value) return;
+              if (d2.value < d1.value) d2.value = d1.value;
+              const rule = Object.assign({}, r.unlock_rule, { starts_at: d1.value, ends_at: d2.value });
+              delete rule.window;
+              autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; });
+            };
+            d1.addEventListener("change", saveDates);
+            d2.addEventListener("change", saveDates);
+            sentence.append(" ", d1, " to ", d2);
+          }
+        }
       } else {
         sentence.append("goes out on ", ruleSel);
       }
