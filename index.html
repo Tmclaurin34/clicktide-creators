@@ -222,7 +222,8 @@
         <button class="secondary small" type="button" data-preset="exclusive">Exclusive</button>
       </div>
       <div id="rewards" class="rw-list"></div>
-      <p class="fineprint" style="margin-top:14px">Changes save themselves the moment you make them.</p>
+      <button id="rw-add" class="secondary small" type="button" style="margin-top:16px">+ Add a reward</button>
+      <p class="fineprint" style="margin-top:14px">Changes save themselves the moment you make them. New rewards start switched off.</p>
     </div>
 
     <div class="card">
@@ -295,12 +296,31 @@
     year_review: "goes out every December, automatically",
   };
   const itemWord = (t) => ITEM_WORD[t] || (t || "gift").replaceAll("_", " ");
+  const TIERS = ["common", "rare", "epic", "legendary"];
+  // What each item roughly costs us to make + mail; the budget engine leans on this.
+  const COST_BY_ITEM = {
+    postcard: 250, certificate: 250, anniversary_card: 250, year_review: 300,
+    handwritten_card: 650, sticker_pack: 450, poster: 1500, tee: 2200,
+    hoodie: 3500, pack: 2500, mug: 1600, hat: 1800, keychain: 900,
+  };
+  const RULE_WORD = {
+    gift_subs: "gift subs in a month", sub_months: "months subscribed", watch_hours: "hours watched",
+    bits: "bits in a month", fanniversary: "their one-year fanniversary", year_review: "December — their year recap",
+  };
+  const RULE_DEFAULT = {
+    gift_subs: { type: "gift_subs", count: 10, window: "month" },
+    sub_months: { type: "sub_months", months: 6 },
+    watch_hours: { type: "watch_hours", hours: 50 },
+    bits: { type: "bits", count: 5000, window: "month" },
+    fanniversary: { type: "fanniversary" },
+    year_review: { type: "year_review", min_minutes: 300 },
+  };
 
   function renderRewards() {
     const body = $("rewards");
     body.replaceChildren();
     if (!rewards.length) {
-      body.append(el("p", { className: "empty", textContent: "No rewards yet." }));
+      body.append(el("p", { className: "empty", textContent: "No rewards yet — add your first one below." }));
       return;
     }
     rewards.forEach((r) => {
@@ -313,10 +333,11 @@
 
       const savedTick = el("span", { className: "rw-saved", textContent: "Saved" });
       let tickTimer;
-      async function autosave(patch, apply) {
+      async function autosave(patch, apply, rerender) {
         const { error } = await sb.from("rewards").update(patch).eq("id", r.id);
         if (error) return notify("Couldn't save: " + error.message, true);
         apply();
+        if (rerender) return renderRewards();
         savedTick.classList.add("show");
         clearTimeout(tickTimer);
         tickTimer = setTimeout(() => savedTick.classList.remove("show"), 1600);
@@ -325,8 +346,47 @@
       toggle.addEventListener("change", () =>
         autosave({ active: toggle.checked }, () => { r.active = toggle.checked; row.classList.toggle("off", !toggle.checked); }));
 
+      // Name: click it, type, done.
+      const name = el("span", { className: "rw-name", textContent: r.name });
+      name.contentEditable = "true";
+      name.spellcheck = false;
+      name.setAttribute("aria-label", "Reward name");
+      name.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); name.blur(); } });
+      name.addEventListener("blur", () => {
+        const v = name.textContent.trim().slice(0, 60) || r.name;
+        name.textContent = v;
+        if (v !== r.name) autosave({ name: v }, () => { r.name = v; });
+      });
+
+      // Tier: the chip itself is the picker.
+      const tierSel = el("select", { className: "ch-tier rw-chip-sel ch-tier-" + r.tier });
+      tierSel.setAttribute("aria-label", "Rarity");
+      TIERS.forEach((t) => tierSel.append(el("option", { value: t, textContent: t.toUpperCase(), selected: t === r.tier })));
+      tierSel.addEventListener("change", () =>
+        autosave({ tier: tierSel.value }, () => { r.tier = tierSel.value; }, true));
+
       const sentence = el("span", { className: "rw-sent" });
-      sentence.append(itemWord(r.item_type) + " · ");
+
+      // What gets mailed.
+      const itemSel = el("select", { className: "rw-sel" });
+      itemSel.setAttribute("aria-label", "Gift type");
+      Object.keys(ITEM_WORD).forEach((t) => itemSel.append(el("option", { value: t, textContent: ITEM_WORD[t], selected: t === r.item_type })));
+      if (!ITEM_WORD[r.item_type]) itemSel.append(el("option", { value: r.item_type, textContent: itemWord(r.item_type), selected: true }));
+      itemSel.addEventListener("change", () =>
+        autosave({ item_type: itemSel.value, cost_cents: COST_BY_ITEM[itemSel.value] ?? r.cost_cents },
+          () => { r.item_type = itemSel.value; r.cost_cents = COST_BY_ITEM[itemSel.value] ?? r.cost_cents; }, true));
+      sentence.append(itemSel, " · ");
+
+      // How it's earned.
+      const ruleSel = el("select", { className: "rw-sel" });
+      ruleSel.setAttribute("aria-label", "How it unlocks");
+      Object.keys(RULE_WORD).forEach((t) => ruleSel.append(el("option", { value: t, textContent: RULE_WORD[t], selected: t === r.unlock_rule.type })));
+      if (!RULE_WORD[r.unlock_rule.type]) ruleSel.append(el("option", { value: r.unlock_rule.type, textContent: r.unlock_rule.type, selected: true }));
+      ruleSel.addEventListener("change", () => {
+        const rule = RULE_DEFAULT[ruleSel.value] ? Object.assign({}, RULE_DEFAULT[ruleSel.value]) : { type: ruleSel.value };
+        autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; }, true);
+      });
+
       if (info) {
         const amount = el("input", { type: "number", min: "1", step: "1", value: info.value, className: "rw-in" });
         amount.setAttribute("aria-label", "Unlock amount");
@@ -335,10 +395,11 @@
           rule[info.key] = Math.max(1, Math.floor(Number(amount.value) || 1));
           autosave({ unlock_rule: rule }, () => { r.unlock_rule = rule; });
         });
-        sentence.append("unlocks at ", amount, " " + info.label + (r.unlock_rule.window === "month" ? " in a month" : ""));
+        sentence.append("unlocks at ", amount, " ", ruleSel);
       } else {
-        sentence.append(SCHEDULED_WORD[r.unlock_rule.type] || "custom unlock");
+        sentence.append("goes out on ", ruleSel);
       }
+
       const cap = el("input", { type: "number", min: "0", step: "1", value: r.monthly_cap ?? "", placeholder: "∞", className: "rw-in" });
       cap.setAttribute("aria-label", "Monthly cap");
       cap.addEventListener("change", () => {
@@ -347,20 +408,46 @@
       });
       sentence.append(" · up to ", cap, " a month");
 
+      // Remove: two taps, no popup.
+      const del = el("button", { className: "rw-del", type: "button", textContent: "Remove" });
+      let armed = false, armTimer;
+      del.addEventListener("click", async () => {
+        if (!armed) {
+          armed = true;
+          del.textContent = "Really remove?";
+          del.classList.add("armed");
+          armTimer = setTimeout(() => { armed = false; del.textContent = "Remove"; del.classList.remove("armed"); }, 3500);
+          return;
+        }
+        clearTimeout(armTimer);
+        const { error } = await sb.from("rewards").delete().eq("id", r.id);
+        if (error) return notify("Couldn't remove: " + error.message, true);
+        rewards = rewards.filter((x) => x.id !== r.id);
+        renderRewards();
+        notify(`Removed “${r.name}”.`);
+      });
+
       const row = el("div", { className: "rw-row" + (r.active ? "" : " off") }, [
         sw,
         el("div", { className: "rw-main" }, [
-          el("div", { className: "rw-top" }, [
-            el("span", { className: "rw-name", textContent: r.name }),
-            el("span", { className: "ch-tier ch-tier-" + r.tier, textContent: r.tier.toUpperCase() }),
-            savedTick,
-          ]),
+          el("div", { className: "rw-top" }, [name, tierSel, savedTick, del]),
           sentence,
         ]),
       ]);
       body.append(row);
     });
   }
+
+  $("rw-add").addEventListener("click", async () => {
+    const { data, error } = await sb.from("rewards").insert({
+      streamer_id: streamer.id, name: "New reward", item_type: "postcard", cost_cents: 250,
+      tier: "common", unlock_rule: RULE_DEFAULT.gift_subs, monthly_cap: 100, active: false,
+    }).select().single();
+    if (error) return notify("Couldn't add a reward: " + error.message, true);
+    rewards.push(data);
+    renderRewards();
+    notify("Reward added — name it, set the rule, then switch it on.");
+  });
 
   async function applyPreset(name) {
     const p = PRESETS[name];
