@@ -206,6 +206,13 @@ td input[type="number"] { width: 90px; }
 .rw-del { background: none; border: none; height: auto; padding: 2px 4px; margin-left: auto; font-size: 12px; font-weight: 700; color: var(--text-quiet); cursor: pointer; border-radius: 6px; }
 .rw-del:hover { color: #FF9C8D; transform: none; box-shadow: none; }
 .rw-del.armed { color: #FF9C8D; }
+.rw-edit { color: var(--text-second); }
+.rw-edit:hover { color: #fff; }
+.rw-edit.armed { color: #5fe0d6; }
+.rw-name-locked { cursor: default; }
+.rw-done { margin-left: auto; height: 32px; padding: 6px 16px; font-size: 13px; }
+.rw-row.open .rw-del { margin-left: 8px; }
+.rw-row.open { background: rgba(255, 255, 255, 0.025); border-radius: 14px; border-top-color: transparent; padding-left: 14px; margin-top: 12px; }
 .rw-saved { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; color: #9FE2A0; opacity: 0; transition: opacity .3s ease; }
 .rw-saved.show { opacity: 1; }
 .switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; cursor: pointer; display: inline-block; margin-top: 2px; }
