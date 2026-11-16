@@ -195,9 +195,18 @@
   </div>
 
   <!-- Logged in -->
+  <div id="dash-backdrop" class="ch-backdrop" style="display:none" aria-hidden="true"></div>
+  <div id="dash-fade" class="ch-backdrop-fade" style="display:none" aria-hidden="true"></div>
   <section id="app-view" class="hidden" style="display:flex;flex-direction:column;gap:24px">
     <div class="card">
-      <h2 id="channel-name">Your channel</h2>
+      <div class="ch-head-row" style="margin-bottom:10px">
+        <img id="dash-avatar" class="ch-avatar hidden" alt="">
+        <div>
+          <p class="eyebrow" style="margin:0 0 4px">Your channel <span id="dash-live" class="live-pill hidden">LIVE</span></p>
+          <h2 id="channel-name" style="font-size:30px;margin:0">Your channel</h2>
+        </div>
+      </div>
+      <div id="stat-tiles" class="st-tiles hidden"></div>
       <p class="sub" id="connection-status">Checking your Twitch connection…</p>
       <div class="row hidden" id="challenge-row" style="margin:-6px 0 16px">
         <span class="calc">Viewer challenge page:</span>
@@ -321,6 +330,25 @@
 
   const unlocked = new Set(); // rows open for editing right now; everything locks again on reload
   let sections = [];
+
+  // Little product drawings, same as the fan page's quest chips.
+  const ART = {
+    postcard: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 9h11M5 13h5M5 16h4"/><rect x="16" y="8" width="3.5" height="3.5" rx=".5"/>',
+    certificate: '<rect x="4" y="3" width="16" height="15" rx="2"/><path d="M8 7.5h8M8 11h6"/><circle cx="12" cy="18.5" r="2.4"/><path d="M10.8 20.4l-.8 2.6 2-1 2 1-.8-2.6"/>',
+    anniversary_card: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    year_review: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M7 14h3v4H7zM12 12h3v6h-3zM17 15h2v3h-2z" fill="currentColor" stroke="none"/>',
+    handwritten_card: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 12q3-4 5 0t5 0"/>',
+    poster: '<path d="M5 4h14v14l-2.5-1.5L14 18l-2-1.2L10 18l-2.5-1.5L5 18z"/><path d="M9 8h6M9 11.5h4"/>',
+    tee: '<path d="M8 4l-5 4 2.5 3L8 9.5V20h8V9.5l2.5 1.5L21 8l-5-4a4 4 0 0 1-8 0z"/>',
+    hoodie: '<path d="M8 4l-5 4 2.5 3L8 9.5V20h8V9.5l2.5 1.5L21 8l-5-4a4 4 0 0 1-8 0z"/><path d="M9 4a3 3 0 0 0 6 0"/>',
+    pack: '<path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8M12 12v8"/>',
+    mug: '<path d="M5 6h11v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM16 8h2.5a2.5 2.5 0 0 1 0 5H16"/>',
+    sticker_pack: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M14 4v6h6" opacity=".7"/><circle cx="10" cy="13" r="2.4"/>',
+  };
+  const itemArt = (t) =>
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    (ART[t] || '<rect x="4" y="8" width="16" height="12" rx="2"/><path d="M4 12h16M12 8v12M12 8s-1-4-4-4a2 2 0 0 0 0 4M12 8s1-4 4-4a2 2 0 0 1 0 4"/>') +
+    "</svg>";
 
   function renderRow(r) {
     const info = ruleInfo(r.unlock_rule);
@@ -516,8 +544,12 @@
       }
     }
 
+    const art = el("div", { className: "ch-art rw-art t-" + r.tier });
+    art.innerHTML = itemArt(r.item_type);
+
     const row = el("div", { className: "rw-row" + (r.active ? "" : " off") + (isOpen ? " open" : "") }, [
       sw,
+      art,
       el("div", { className: "rw-main" }, [top, sentence]),
     ]);
     return row;
@@ -671,6 +703,17 @@
     }
     streamer = data.streamer;
     $("channel-name").textContent = streamer.display_name;
+    // The channel's own art becomes the dashboard's glow — same treatment fans get.
+    if (streamer.avatar_url) {
+      $("dash-avatar").src = streamer.avatar_url;
+      $("dash-avatar").classList.remove("hidden");
+      const bd = $("dash-backdrop");
+      bd.style.display = "";
+      $("dash-fade").style.display = "";
+      bd.style.backgroundImage = "url('" + streamer.avatar_url + "')";
+      requestAnimationFrame(() => bd.classList.add("on"));
+    }
+    if (streamer.is_live) $("dash-live").classList.remove("hidden");
     const chLink = new URL("challenge.html?c=" + streamer.id, location.href).toString();
     $("challenge-row").classList.remove("hidden");
     $("open-challenge").href = chLink;
@@ -702,6 +745,18 @@
     const ok = await connect(session);
     if (!ok) return;
     await Promise.all([loadRewards(), loadClaims()]);
+    loadStats();
+  }
+
+  // The fun numbers: fans tracked, gifts earned, rewards live.
+  async function loadStats() {
+    const tiles = $("stat-tiles");
+    const { count: fans } = await sb.from("supporters").select("id", { count: "exact", head: true }).eq("streamer_id", streamer.id);
+    const { count: sent } = await sb.from("claims").select("id", { count: "exact", head: true }).eq("streamer_id", streamer.id).not("status", "in", "(canceled,expired)");
+    const live = rewards.filter((r) => r.active).length;
+    const tile = (n, l) => '<div class="st-tile"><div class="st-num">' + n + '</div><div class="st-lab">' + l + "</div></div>";
+    tiles.innerHTML = tile(fans ?? 0, "FANS TRACKED") + tile(sent ?? 0, "GIFTS EARNED") + tile(live, "REWARDS LIVE");
+    tiles.classList.remove("hidden");
   }
 
   function showLogin() {
