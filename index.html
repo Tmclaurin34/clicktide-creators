@@ -232,7 +232,6 @@
       </div>
       <div id="rewards" class="rw-list"></div>
       <button id="rw-add" class="secondary small" type="button" style="margin-top:16px">+ Add a reward</button>
-      <button id="sec-add" class="secondary small" type="button" style="margin-top:16px;margin-left:8px">+ Add a section</button>
       <p class="fineprint" style="margin-top:14px">Changes save themselves the moment you make them. New rewards start switched off.</p>
     </div>
 
@@ -622,15 +621,6 @@
     notify("Reward added — name it, set the rule, then switch it on.");
   });
 
-  $("sec-add").addEventListener("click", async () => {
-    const { data, error } = await sb.from("reward_sections").insert({
-      streamer_id: streamer.id, name: "New section", position: sections.length,
-    }).select().single();
-    if (error) return notify("Couldn't add a section: " + error.message, true);
-    sections.push(data);
-    renderRewards();
-    notify("Section added — click its name to rename it.");
-  });
 
   async function applyPreset(name) {
     const p = PRESETS[name];
