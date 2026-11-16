@@ -70,7 +70,7 @@ input[type="checkbox"] { min-height: 0; width: 20px; height: 20px; accent-color:
 input:focus, select:focus, button:focus-visible { outline: 2px solid #D655A5; outline-offset: 2px; }
 
 /* ---------- Cards, tables, pills ---------- */
-.card { background: var(--surface); border: none; border-radius: 22px; padding: 28px; }
+.card { background: none; border: none; border-top: 1px solid var(--line); border-radius: 0; padding: 32px 4px 12px 0; margin-top: 10px; }
 .card h2 { font-family: var(--font-display); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
 .sub { color: var(--text-second); margin: 0 0 16px; }
 .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
@@ -171,7 +171,7 @@ td input[type="number"] { width: 90px; }
 
 /* ---------- Viewer challenge page ---------- */
 .ch-head { text-align: center; padding: 28px 0 4px; }
-#login-cta-card { background: none; border-radius: 0; padding: 6px 0 26px !important; border-bottom: 1px solid var(--line); }
+#login-cta-card { background: none; border-top: none; border-radius: 0; padding: 6px 0 26px !important; margin-top: 0; border-bottom: 1px solid var(--line); }
 .ch-avatar { width: 84px; height: 84px; border-radius: 50%; border: 2px solid var(--line-strong); margin-bottom: 14px; }
 .ch-title { font-family: var(--font-display); font-size: clamp(30px, 4.6vw, 52px); font-weight: 600; letter-spacing: -0.02em; }
 .live-pill { display: inline-block; margin-left: 8px; background: rgba(67, 142, 68, 0.25); color: #9FE2A0; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; padding: 3px 10px; border-radius: 999px; vertical-align: middle; animation: livepulse 2s ease-in-out infinite; }
