@@ -242,6 +242,27 @@ td input[type="number"] { width: 90px; }
 .st-lab { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; color: var(--text-quiet); margin-top: 8px; }
 .rw-tiers-note { line-height: 2.3; }
 .rw-tiers-note .ch-tier { vertical-align: 1px; }
+
+/* ---------- App surfaces: glass panels with depth (the premium look).
+   The open editorial style stays for the marketing pages; the APP gets
+   real surfaces — blur, a light-catch top edge, and soft shadow. ---------- */
+#app-view .card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-top-color: rgba(255, 255, 255, 0.22);
+  border-radius: 26px;
+  padding: 30px 28px;
+  margin-top: 0;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+#app-view .st-tile { border: 1px solid rgba(255, 255, 255, 0.09); border-top-color: rgba(255, 255, 255, 0.18); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25); }
+#app-view .rw-row { border-top-color: rgba(255, 255, 255, 0.09); }
+#app-view .rw-row.open { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-top-color: rgba(255, 255, 255, 0.2); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); padding: 18px 16px; }
+#app-view .switch .knob { box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3); }
+#app-view input, #app-view select.rw-sel, #app-view .rw-in { background: rgba(4, 5, 14, 0.45); border-color: rgba(255, 255, 255, 0.14); }
+#app-view #budget { width: 140px; }
+#app-view table td { border-top-color: rgba(255, 255, 255, 0.08); }
 @media (max-width: 560px) { .st-num { font-size: 24px; } .st-tiles { gap: 8px; } }
 .switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; cursor: pointer; display: inline-block; margin-top: 2px; }
 .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
