@@ -24,6 +24,7 @@ const EVENT_TYPES = [
   "channel.subscription.gift",
   "channel.cheer",
   "channel.channel_points_custom_reward_redemption.add",
+  "channel.hype_train.end",
   "stream.online",
   "stream.offline",
 ];
