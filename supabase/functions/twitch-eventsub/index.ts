@@ -101,6 +101,30 @@ Deno.serve(async (req) => {
     return done();
   }
 
+  // Hype Train ended: Twitch hands us the single top gifter and top cheerer.
+  // Award whichever the streamer has a reward for (the engine applies caps/budget).
+  if (subType === "channel.hype_train.end") {
+    const contribs = Array.isArray(e.top_contributions) ? e.top_contributions : [];
+    const pick = (t: string) => {
+      const c = contribs.find((x: any) => x?.type === t && x?.user_id);
+      return c ? { user_id: String(c.user_id), user_name: c.user_name ?? null } : null;
+    };
+    const topGifter = pick("subscription");
+    const topCheerer = pick("bits");
+    if (!topGifter && !topCheerer) return done();
+    const { error: htErr } = await db.rpc("award_hype_train_winners", {
+      p_streamer_id: streamer.id,
+      p_train_id: String(e.id ?? messageId),
+      p_top_gifter: topGifter,
+      p_top_cheerer: topCheerer,
+    });
+    if (htErr) {
+      console.error("award_hype_train_winners failed", htErr);
+      return new Response("Record failed", { status: 500 }); // Twitch will retry
+    }
+    return done();
+  }
+
   let ev: SupporterEvent | null = null;
   const tierCents = TIER_CENTS[e.tier as string] ?? 250;
 
