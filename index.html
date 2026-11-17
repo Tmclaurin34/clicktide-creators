@@ -319,6 +319,7 @@
   const RULE_WORD = {
     gift_subs: "gift subs", sub_months: "months subscribed", watch_hours: "hours watched",
     bits: "bits", fanniversary: "their one-year fanniversary", year_review: "December — their year recap",
+    hype_train_top_gifter: "a Hype Train (to the top gifter)", hype_train_top_cheerer: "a Hype Train (to the top cheerer)",
   };
   const WINDOWED = new Set(["gift_subs", "bits", "watch_hours"]);
   const WIN_WORD = { once: "all-time", month: "each month", year: "this year", range: "between dates…" };
@@ -329,6 +330,8 @@
     bits: { type: "bits", count: 5000, window: "month" },
     fanniversary: { type: "fanniversary" },
     year_review: { type: "year_review", min_minutes: 300 },
+    hype_train_top_gifter: { type: "hype_train_top_gifter" },
+    hype_train_top_cheerer: { type: "hype_train_top_cheerer" },
   };
 
   const unlocked = new Set(); // rows open for editing right now; everything locks again on reload
